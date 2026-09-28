@@ -1,0 +1,111 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "D:/Qt/6.8.3/msvc2022_64",
+        "LOGVIEWER_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc-qt6-release",
+      "displayName": "Windows MSVC 2022 + Qt 6.8.3 (Release)",
+      "inherits": "windows-base",
+      "binaryDir": "${sourceDir}/build/windows-msvc-qt6-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-msvc-qt6-debug",
+      "displayName": "Windows MSVC 2022 + Qt 6.8.3 (Debug)",
+      "inherits": "windows-base",
+      "binaryDir": "${sourceDir}/build/windows-msvc-qt6-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "LOGVIEWER_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "linux-gcc-release",
+      "displayName": "Linux GCC + system Qt 6 (Release)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/linux-gcc-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "Linux GCC + system Qt 6 (Debug)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/linux-gcc-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc-qt6-release",
+      "configurePreset": "windows-msvc-qt6-release"
+    },
+    {
+      "name": "windows-msvc-qt6-debug",
+      "configurePreset": "windows-msvc-qt6-debug"
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-msvc-qt6-release",
+      "configurePreset": "windows-msvc-qt6-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-qt6-debug",
+      "configurePreset": "windows-msvc-qt6-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

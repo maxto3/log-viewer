@@ -1,0 +1,24 @@
+# Build output
+build/
+dist/
+out/
+
+# Qt / IDE
+*.user
+*.user.*
+.vs/
+.vscode/
+.qtc_clangd/
+compile_commands.json
+
+# Generated translations (the .ts sources are versioned)
+*.qm
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Local sample / test logs dropped in by the developer (not versioned; the
+# frozen fixture used by the test suite lives in tests/data/)
+test-data/

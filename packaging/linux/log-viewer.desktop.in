@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Log Viewer
+Name[zh_CN]=Log Viewer 日志查看器
+GenericName=Log File Viewer
+GenericName[zh_CN]=日志查看器
+Comment=Read, search and follow log files
+Comment[zh_CN]=阅读、搜索并实时跟随日志文件
+Exec=log-viewer %F
+Icon=log-viewer
+Terminal=false
+Categories=Utility;System;Monitor;
+MimeType=text/x-log;text/plain;application/json;application/x-ndjson;
+Keywords=log;logs;viewer;tail;monitor;
+Keywords[zh_CN]=日志;查看器;监控;
+StartupNotify=true
+StartupWMClass=log-viewer

@@ -1,0 +1,500 @@
+2026-09-28T22:15:43.3035871+08:00  INFO ThreadId(02) shadowsocks_rust::service::local: shadowsocks local 1.25.0 build 2026-08-29T07:51:00.397357100+00:00
+2026-09-28T22:15:43.3145572+08:00 DEBUG ThreadId(02) shadowsocks::plugin: started plugin "C:/shadowsocks/kcptun-client.exe" on 127.0.0.1:49671 <-> 23.105.206.76:9684 (8068) tcp_only
+2026-09-28T22:15:43.3166294+08:00 DEBUG ThreadId(02) shadowsocks::plugin: started plugin "C:/shadowsocks/kcptun-client.exe" on 127.0.0.1:49672 <-> 216.24.176.223:27894 (8112) tcp_only
+2026-09-28T22:15:43.3185155+08:00 DEBUG ThreadId(02) shadowsocks::plugin: started plugin "C:/shadowsocks/kcptun-client.exe" on 127.0.0.1:49673 <-> 66.112.211.204:30598 (8136) tcp_only
+2026-09-28T22:15:43.3201721+08:00 DEBUG ThreadId(02) shadowsocks::plugin: started plugin "C:/shadowsocks/kcptun-client.exe" on [::1]:49674 <-> [2001:19f0:6001:1132:5400:4ff:fe02:102c]:2346 (7504) tcp_only
+2026-09-28T22:15:44.0175109+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 216.24.176.223:27894 (BWG-GIA) (score: 88), ServerStatData { latency_median: 178, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 178.0, latency_mad: 0 }
+2026-09-28T22:15:44.0206687+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 23.105.206.76:9684 (BWG-CN2) (score: 72), ServerStatData { latency_median: 182, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 182.0, latency_mad: 0 }
+2026-09-28T22:15:44.0251499+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 23.105.206.76:9684 (BWG-CN2) (score: 75), ServerStatData { latency_median: 188, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 188.0, latency_mad: 0 }
+2026-09-28T22:15:44.02855+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 66.112.211.204:30598 (BWG-KVM) (score: 75), ServerStatData { latency_median: 188, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 188.0, latency_mad: 0 }
+2026-09-28T22:15:44.0304282+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 66.112.211.204:30598 (BWG-KVM) (score: 76), ServerStatData { latency_median: 192, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 192.0, latency_mad: 0 }
+2026-09-28T22:15:44.037696+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 216.24.176.223:27894 (BWG-GIA) (score: 99), ServerStatData { latency_median: 200, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 200.0, latency_mad: 0 }
+2026-09-28T22:15:44.0469677+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server [2001:19f0:6001:1132:5400:4ff:fe02:102c]:2346 (VULTR) (score: 82), ServerStatData { latency_median: 206, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 206.0, latency_mad: 0 }
+2026-09-28T22:15:44.0504173+08:00 DEBUG ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server [2001:19f0:6001:1132:5400:4ff:fe02:102c]:2346 (VULTR) (score: 84), ServerStatData { latency_median: 212, fail_rate: 0.0, latency_stdev: 3535.5339059327375, latency_mean: 212.0, latency_mad: 0 }
+2026-09-28T22:15:44.0504976+08:00  INFO ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: chose best TCP server 23.105.206.76:9684 (BWG-CN2)
+2026-09-28T22:15:44.0505057+08:00  INFO ThreadId(02) shadowsocks_service::local::loadbalancing::ping_balancer: chose best UDP server 23.105.206.76:9684 (BWG-CN2)
+2026-09-28T22:15:44.0881187+08:00  INFO tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::server: shadowsocks HTTP listening on 127.0.0.1:1081
+2026-09-28T22:15:44.0881899+08:00  INFO tokio-rt-worker ThreadId(30) shadowsocks_service::local::socks::server::server: shadowsocks socks TCP listening on 127.0.0.1:1080
+2026-09-28T22:15:44.0884088+08:00  INFO tokio-rt-worker ThreadId(30) shadowsocks_service::local::socks::server::socks5::udprelay: shadowsocks socks5 UDP listening on 127.0.0.1:1080
+2026-09-28T22:16:07.088835+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT login.live.com:443
+2026-09-28T22:16:07.1106929+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:50424 <-> login.live.com:443 (proxied)
+2026-09-28T22:16:07.1114507+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:50424 <-> login.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:08.4926016+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT activity.windows.com:443
+2026-09-28T22:16:08.4928656+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:50428 <-> activity.windows.com:443 (proxied)
+2026-09-28T22:16:08.4929093+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:50428 <-> activity.windows.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:08.4950643+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT default.exp-tas.com:443
+2026-09-28T22:16:08.4954438+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:50427 <-> default.exp-tas.com:443 (proxied)
+2026-09-28T22:16:08.4954988+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:50427 <-> default.exp-tas.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:08.6591764+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT login.live.com:443
+2026-09-28T22:16:08.6595242+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:49651 <-> login.live.com:443 (proxied)
+2026-09-28T22:16:08.6595661+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:49651 <-> login.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:08.751014+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT login.live.com:443
+2026-09-28T22:16:08.7513362+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:49566 <-> login.live.com:443 (proxied)
+2026-09-28T22:16:08.7513933+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:49566 <-> login.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:09.1051489+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT login.live.com:443
+2026-09-28T22:16:09.1054201+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:64561 <-> login.live.com:443 (proxied)
+2026-09-28T22:16:09.1054578+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:64561 <-> login.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:13.0070545+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT fe3cr.delivery.mp.microsoft.com:443
+2026-09-28T22:16:13.0072824+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51696 <-> fe3cr.delivery.mp.microsoft.com:443 (proxied)
+2026-09-28T22:16:13.0073534+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51696 <-> fe3cr.delivery.mp.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:13.5321477+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT slscr.update.microsoft.com:443
+2026-09-28T22:16:13.5323597+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51698 <-> slscr.update.microsoft.com:443 (proxied)
+2026-09-28T22:16:13.532392+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51698 <-> slscr.update.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:14.154279+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT raw.githubusercontent.com:443
+2026-09-28T22:16:14.1545384+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51701 <-> raw.githubusercontent.com:443 (proxied)
+2026-09-28T22:16:14.1545865+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51701 <-> raw.githubusercontent.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:14.6380862+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT api.github.com:443
+2026-09-28T22:16:14.6383063+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51703 <-> api.github.com:443 (proxied)
+2026-09-28T22:16:14.6383456+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51703 <-> api.github.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:15.5111344+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT officeclient.microsoft.com:443
+2026-09-28T22:16:15.5113857+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51705 <-> officeclient.microsoft.com:443 (proxied)
+2026-09-28T22:16:15.5114254+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51705 <-> officeclient.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:15.7310069+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT ecs.office.com:443
+2026-09-28T22:16:15.7312367+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51707 <-> ecs.office.com:443 (proxied)
+2026-09-28T22:16:15.7312863+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51707 <-> ecs.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:16.1169209+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT ecs.office.com:443
+2026-09-28T22:16:16.1171513+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51709 <-> ecs.office.com:443 (proxied)
+2026-09-28T22:16:16.1171925+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51709 <-> ecs.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:17.1341623+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT odc.officeapps.live.com:443
+2026-09-28T22:16:17.1343817+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51713 <-> odc.officeapps.live.com:443 (proxied)
+2026-09-28T22:16:17.1344209+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51713 <-> odc.officeapps.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:17.1592165+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 0, cap: 0, amt: 0, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 0, cap: 0, amt: 0, .. })
+2026-09-28T22:16:17.4371301+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT mobile.events.data.microsoft.com:443
+2026-09-28T22:16:17.4373606+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51715 <-> mobile.events.data.microsoft.com:443 (proxied)
+2026-09-28T22:16:17.4373956+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51715 <-> mobile.events.data.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:17.8265793+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT storeedge.microsoft.com:443
+2026-09-28T22:16:17.8268126+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51717 <-> storeedge.microsoft.com:443 (proxied)
+2026-09-28T22:16:17.8268541+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51717 <-> storeedge.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:18.6862552+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 8097, cap: 8097, amt: 44094, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 636, cap: 636, amt: 716, .. })
+2026-09-28T22:16:18.6864224+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 2183, cap: 2183, amt: 43298, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 1533, cap: 1533, amt: 1613, .. })
+2026-09-28T22:16:18.6864402+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 873, cap: 873, amt: 9893, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 393, cap: 393, amt: 473, .. })
+2026-09-28T22:16:18.6864571+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 502, cap: 502, amt: 9597, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 1469, cap: 1469, amt: 2702, .. })
+2026-09-28T22:16:19.0578582+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET ocsp2.globalsign.com:80 HTTP/1.1
+2026-09-28T22:16:19.0757195+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> ocsp2.globalsign.com:80 finished
+2026-09-28T22:16:19.0840775+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET ocsp2.globalsign.com:80 HTTP/1.1
+2026-09-28T22:16:19.0945425+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> ocsp2.globalsign.com:80 finished
+2026-09-28T22:16:19.0976711+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET crl.globalsign.com:80 HTTP/1.1
+2026-09-28T22:16:19.1148132+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> crl.globalsign.com:80 finished
+2026-09-28T22:16:19.1290913+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET crl.globalsign.com:80 HTTP/1.1
+2026-09-28T22:16:19.1376817+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> crl.globalsign.com:80 finished
+2026-09-28T22:16:21.5853901+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:21.586511+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:21.6557563+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:21.6613036+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51729 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:22.7892761+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:22.7908394+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51729 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:23.8062376+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:23.8073933+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51729 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:24.6739308+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:24.6748079+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:27.6896668+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:27.690544+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:28.1743286+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT inputsuggestions.msdxcdn.microsoft.com:443
+2026-09-28T22:16:28.1745651+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51735 <-> inputsuggestions.msdxcdn.microsoft.com:443 (proxied)
+2026-09-28T22:16:28.1745997+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51735 <-> inputsuggestions.msdxcdn.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:28.9126001+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:28.9134431+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51739 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:29.9165061+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:29.9173805+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51739 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:30.6948722+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:30.6960755+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:30.9283648+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:30.9293009+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51739 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:31.0657414+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET www.intel.com:80 HTTP/1.1
+2026-09-28T22:16:31.272648+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> www.intel.com:80 finished
+2026-09-28T22:16:31.2735913+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET certificates.intel.com:80 HTTP/1.1
+2026-09-28T22:16:31.481717+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> certificates.intel.com:80 finished
+2026-09-28T22:16:31.4840459+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET certificates.intel.com:80 HTTP/1.1
+2026-09-28T22:16:31.6670906+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> certificates.intel.com:80 finished
+2026-09-28T22:16:31.6706366+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET www.intel.com:80 HTTP/1.1
+2026-09-28T22:16:31.8602401+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> www.intel.com:80 finished
+2026-09-28T22:16:31.8611997+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET certificates.intel.com:80 HTTP/1.1
+2026-09-28T22:16:32.0446557+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> certificates.intel.com:80 finished
+2026-09-28T22:16:32.0476066+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET certificates.intel.com:80 HTTP/1.1
+2026-09-28T22:16:32.2297674+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> certificates.intel.com:80 finished
+2026-09-28T22:16:32.7662262+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET crl.globalsign.net:80 HTTP/1.1
+2026-09-28T22:16:33.7006171+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:33.7018435+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:33.7224463+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51719 <-> crl.globalsign.net:80 finished
+2026-09-28T22:16:36.7103179+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:36.7110484+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:39.7271855+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:39.7280407+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:40.6448985+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP POST disabled.invalid:80 HTTP/1.1
+2026-09-28T22:16:41.0370213+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:41.0388328+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51751 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:41.1034227+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET steamconnecttest.com:80 HTTP/1.1
+2026-09-28T22:16:41.1169991+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET ipv6check-http.steamserver.net:80 HTTP/1.1
+2026-09-28T22:16:41.288889+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51753 <-> steamconnecttest.com:80 finished
+2026-09-28T22:16:41.9864625+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51755 <-> ipv6check-http.steamserver.net:80 finished
+2026-09-28T22:16:42.0497811+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:42.0506359+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51751 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:42.7432647+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:42.7440168+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:43.059624+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:43.0604755+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51751 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:43.642182+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT api.steampowered.com:443
+2026-09-28T22:16:43.6424431+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51762 <-> api.steampowered.com:443 (proxied)
+2026-09-28T22:16:43.6424757+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51762 <-> api.steampowered.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:44.2354157+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 23.105.206.76:9684 (BWG-CN2) (score: 72), ServerStatData { latency_median: 178, fail_rate: 0.0, latency_stdev: 5.656854249492381, latency_mean: 178.0, latency_mad: 4 }
+2026-09-28T22:16:44.237017+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 216.24.176.223:27894 (BWG-GIA) (score: 88), ServerStatData { latency_median: 177, fail_rate: 0.0, latency_stdev: 1.4142135623730951, latency_mean: 177.0, latency_mad: 1 }
+2026-09-28T22:16:44.2412485+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 23.105.206.76:9684 (BWG-CN2) (score: 74), ServerStatData { latency_median: 184, fail_rate: 0.0, latency_stdev: 4.949747468305833, latency_mean: 184.5, latency_mad: 3 }
+2026-09-28T22:16:44.247096+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 216.24.176.223:27894 (BWG-GIA) (score: 99), ServerStatData { latency_median: 193, fail_rate: 0.0, latency_stdev: 9.899494936611665, latency_mean: 193.0, latency_mad: 7 }
+2026-09-28T22:16:44.2599947+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server [2001:19f0:6001:1132:5400:4ff:fe02:102c]:2346 (VULTR) (score: 82), ServerStatData { latency_median: 202, fail_rate: 0.0, latency_stdev: 4.949747468305833, latency_mean: 202.5, latency_mad: 3 }
+2026-09-28T22:16:44.2641029+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote UDP server 66.112.211.204:30598 (BWG-KVM) (score: 80), ServerStatData { latency_median: 195, fail_rate: 0.0, latency_stdev: 10.606601717798213, latency_mean: 195.5, latency_mad: 7 }
+2026-09-28T22:16:44.2652744+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server 66.112.211.204:30598 (BWG-KVM) (score: 81), ServerStatData { latency_median: 198, fail_rate: 0.0, latency_stdev: 8.48528137423857, latency_mean: 198.0, latency_mad: 6 }
+2026-09-28T22:16:44.4618894+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: balancer: checked & updated remote TCP server [2001:19f0:6001:1132:5400:4ff:fe02:102c]:2346 (VULTR) (score: 160), ServerStatData { latency_median: 306, fail_rate: 0.0, latency_stdev: 133.64318164425748, latency_mean: 306.5, latency_mad: 94 }
+2026-09-28T22:16:44.4619568+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: kept best TCP server 23.105.206.76:9684 (BWG-CN2)
+2026-09-28T22:16:44.4619602+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::loadbalancing::ping_balancer: kept best UDP server 23.105.206.76:9684 (BWG-CN2)
+2026-09-28T22:16:44.867162+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp3-hkg1.steamserver.net:27023
+2026-09-28T22:16:44.8708213+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-hkg1.steamserver.net:443
+2026-09-28T22:16:44.8740083+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-hkg1.steamserver.net:27025
+2026-09-28T22:16:44.9110545+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51768 <-> cmp3-hkg1.steamserver.net:27023 (bypassed)
+2026-09-28T22:16:44.9111218+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51768 <-> cmp3-hkg1.steamserver.net:27023 bypassed
+2026-09-28T22:16:44.9111542+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51770 <-> cmp2-hkg1.steamserver.net:443 (bypassed)
+2026-09-28T22:16:44.911176+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51770 <-> cmp2-hkg1.steamserver.net:443 bypassed
+2026-09-28T22:16:44.9147249+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51771 <-> cmp2-hkg1.steamserver.net:27025 (bypassed)
+2026-09-28T22:16:44.9147724+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51771 <-> cmp2-hkg1.steamserver.net:27025 bypassed
+2026-09-28T22:16:44.924376+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp1-tyo3.steamserver.net:27019
+2026-09-28T22:16:45.0212786+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51773 <-> cmp1-tyo3.steamserver.net:27019 (bypassed)
+2026-09-28T22:16:45.0213715+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51773 <-> cmp1-tyo3.steamserver.net:27019 bypassed
+2026-09-28T22:16:45.1204164+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-tyo3.steamserver.net:27019
+2026-09-28T22:16:45.1204589+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-tyo3.steamserver.net:443
+2026-09-28T22:16:45.1632891+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp1-sgp1.steamserver.net:443
+2026-09-28T22:16:45.2264155+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51777 <-> cmp2-tyo3.steamserver.net:27019 (bypassed)
+2026-09-28T22:16:45.2264999+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51777 <-> cmp2-tyo3.steamserver.net:27019 bypassed
+2026-09-28T22:16:45.2265295+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51778 <-> cmp2-tyo3.steamserver.net:443 (bypassed)
+2026-09-28T22:16:45.226549+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51778 <-> cmp2-tyo3.steamserver.net:443 bypassed
+2026-09-28T22:16:45.4382588+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51781 <-> cmp1-sgp1.steamserver.net:443 (bypassed)
+2026-09-28T22:16:45.4383471+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51781 <-> cmp1-sgp1.steamserver.net:443 bypassed
+2026-09-28T22:16:45.4391314+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT datapipeline.logitech.io:443
+2026-09-28T22:16:45.4391511+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT gamesapps-assets.ghub.logitechg.com:443
+2026-09-28T22:16:45.4393485+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51784 <-> datapipeline.logitech.io:443 (proxied)
+2026-09-28T22:16:45.4393884+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51784 <-> datapipeline.logitech.io:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:45.4394408+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51785 <-> gamesapps-assets.ghub.logitechg.com:443 (proxied)
+2026-09-28T22:16:45.4394785+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51785 <-> gamesapps-assets.ghub.logitechg.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:45.661134+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-sgp1.steamserver.net:27020
+2026-09-28T22:16:45.7550055+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp1-sgp1.steamserver.net:27019
+2026-09-28T22:16:45.7557177+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:45.7565747+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:45.9145432+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-lax1.steamserver.net:443
+2026-09-28T22:16:46.007455+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51790 <-> cmp1-sgp1.steamserver.net:27019 (bypassed)
+2026-09-28T22:16:46.007523+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51790 <-> cmp1-sgp1.steamserver.net:27019 bypassed
+2026-09-28T22:16:46.1092136+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51792 <-> cmp2-lax1.steamserver.net:443 (bypassed)
+2026-09-28T22:16:46.1092839+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51792 <-> cmp2-lax1.steamserver.net:443 bypassed
+2026-09-28T22:16:46.161629+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT ext1-maa2.steamserver.net:27030
+2026-09-28T22:16:46.2823108+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT update.googleapis.com:443
+2026-09-28T22:16:46.2825506+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51796 <-> update.googleapis.com:443 (proxied)
+2026-09-28T22:16:46.2825895+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51796 <-> update.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:46.5707222+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51794 <-> ext1-maa2.steamserver.net:27030 (bypassed)
+2026-09-28T22:16:46.5707863+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51794 <-> ext1-maa2.steamserver.net:27030 bypassed
+2026-09-28T22:16:46.6920665+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT ext2-maa2.steamserver.net:27032
+2026-09-28T22:16:46.7554428+08:00 ERROR tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::server: HTTP connection 127.0.0.1:51788 handler failed with error: connection closed before message completed
+2026-09-28T22:16:46.7598935+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT updates.logitech.com:443
+2026-09-28T22:16:46.7598936+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT updates.logitech.com:443
+2026-09-28T22:16:46.7600886+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51802 <-> updates.logitech.com:443 (proxied)
+2026-09-28T22:16:46.7601218+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51802 <-> updates.logitech.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:46.765134+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT updates.logitech.com:443
+2026-09-28T22:16:46.7653251+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51805 <-> updates.logitech.com:443 (proxied)
+2026-09-28T22:16:46.7653552+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51805 <-> updates.logitech.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:46.7712607+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51801 <-> updates.logitech.com:443 (proxied)
+2026-09-28T22:16:46.7713076+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51801 <-> updates.logitech.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:47.0135625+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET ye2.c.lencr.org:80 HTTP/1.1
+2026-09-28T22:16:47.0863859+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51799 <-> ext2-maa2.steamserver.net:27032 (bypassed)
+2026-09-28T22:16:47.0864619+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51799 <-> ext2-maa2.steamserver.net:27032 bypassed
+2026-09-28T22:16:47.2508713+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51807 <-> ye2.c.lencr.org:80 finished
+2026-09-28T22:16:47.6888077+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT www.googleapis.com:443
+2026-09-28T22:16:47.6890755+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51809 <-> www.googleapis.com:443 (proxied)
+2026-09-28T22:16:47.6891139+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51809 <-> www.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:47.7493281+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT config.edge.skype.com:443
+2026-09-28T22:16:47.7496117+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63795 <-> config.edge.skype.com:443 (proxied)
+2026-09-28T22:16:47.749687+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63795 <-> config.edge.skype.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:47.7515953+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT cmp2-hkg1.steamserver.net:27025
+2026-09-28T22:16:47.7899989+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:51811 <-> cmp2-hkg1.steamserver.net:27025 (bypassed)
+2026-09-28T22:16:47.7900947+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:51811 <-> cmp2-hkg1.steamserver.net:27025 bypassed
+2026-09-28T22:16:48.194376+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT play.googleapis.com:443
+2026-09-28T22:16:48.1946325+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63800 <-> play.googleapis.com:443 (proxied)
+2026-09-28T22:16:48.1946758+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63800 <-> play.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:48.1946976+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT www.googleapis.com:443
+2026-09-28T22:16:48.1949369+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63802 <-> www.googleapis.com:443 (proxied)
+2026-09-28T22:16:48.1950001+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63802 <-> www.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:48.2922398+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT play.googleapis.com:443
+2026-09-28T22:16:48.2926317+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63804 <-> play.googleapis.com:443 (proxied)
+2026-09-28T22:16:48.2927031+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63804 <-> play.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:48.3136772+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT drivefrontend-pa.googleapis.com:443
+2026-09-28T22:16:48.3138835+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63806 <-> drivefrontend-pa.googleapis.com:443 (proxied)
+2026-09-28T22:16:48.3139191+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63806 <-> drivefrontend-pa.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:48.4502194+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT odc.officeapps.live.com:443
+2026-09-28T22:16:48.4504412+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63808 <-> odc.officeapps.live.com:443 (proxied)
+2026-09-28T22:16:48.4504787+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63808 <-> odc.officeapps.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:48.7582422+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:48.7598793+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:49.0265008+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP POST client.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:49.0266663+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET update.myth.cool:80 HTTP/1.1
+2026-09-28T22:16:49.042707+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET check.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:49.0874634+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET client.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:49.1247256+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63812 <-> update.myth.cool:80 finished
+2026-09-28T22:16:49.1537503+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP POST relay 127.0.0.1:63811 <-> client.myth.cool:443 finished
+2026-09-28T22:16:49.1618772+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63815 <-> check.myth.cool:443 finished
+2026-09-28T22:16:49.2009839+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63817 <-> client.myth.cool:443 finished
+2026-09-28T22:16:49.2666664+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP POST client.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:49.2671871+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET clientconfig.akamai.steamstatic.com:80 HTTP/1.1
+2026-09-28T22:16:49.2672344+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET clientconfig.akamai.steamstatic.com:80 HTTP/1.1
+2026-09-28T22:16:49.2672502+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET clientconfig.akamai.steamstatic.com:80 HTTP/1.1
+2026-09-28T22:16:49.2672643+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET clientconfig.akamai.steamstatic.com:80 HTTP/1.1
+2026-09-28T22:16:49.3002728+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP POST relay 127.0.0.1:63819 <-> client.myth.cool:443 finished
+2026-09-28T22:16:49.389929+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP POST client.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:49.390107+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET config.gamepp.com:443 HTTP/1.1
+2026-09-28T22:16:49.4325004+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP POST relay 127.0.0.1:63828 <-> client.myth.cool:443 finished
+2026-09-28T22:16:49.4900335+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63829 <-> config.gamepp.com:443 finished
+2026-09-28T22:16:49.4933109+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT steamcommunity.com:443
+2026-09-28T22:16:49.4936518+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:63832 <-> steamcommunity.com:443 (proxied)
+2026-09-28T22:16:49.4937158+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:63832 <-> steamcommunity.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.5350194+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT config.edge.skype.com:443
+2026-09-28T22:16:49.5354866+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55934 <-> config.edge.skype.com:443 (proxied)
+2026-09-28T22:16:49.535576+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55934 <-> config.edge.skype.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.6930613+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET update.myth.cool:80 HTTP/1.1
+2026-09-28T22:16:49.7321445+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63820 <-> clientconfig.akamai.steamstatic.com:80 finished
+2026-09-28T22:16:49.7353644+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63822 <-> clientconfig.akamai.steamstatic.com:80 finished
+2026-09-28T22:16:49.7594635+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63823 <-> clientconfig.akamai.steamstatic.com:80 finished
+2026-09-28T22:16:49.7789314+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:55936 <-> update.myth.cool:80 finished
+2026-09-28T22:16:49.9324149+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT store.steampowered.com:443
+2026-09-28T22:16:49.9327251+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55938 <-> store.steampowered.com:443 (proxied)
+2026-09-28T22:16:49.9327842+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55938 <-> store.steampowered.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.969574+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT community.steamstatic.com:443
+2026-09-28T22:16:49.9966509+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT substrate.office.com:443
+2026-09-28T22:16:49.9966895+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT substrate.office.com:443
+2026-09-28T22:16:49.996911+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55942 <-> substrate.office.com:443 (proxied)
+2026-09-28T22:16:49.9969585+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55942 <-> substrate.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.9969839+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55943 <-> substrate.office.com:443 (proxied)
+2026-09-28T22:16:49.9970015+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55943 <-> substrate.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.9980072+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT substrate.office.com:443
+2026-09-28T22:16:49.9981828+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT substrate.office.com:443
+2026-09-28T22:16:49.998223+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55946 <-> substrate.office.com:443 (proxied)
+2026-09-28T22:16:49.9982558+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55946 <-> substrate.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:49.9983477+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55947 <-> substrate.office.com:443 (proxied)
+2026-09-28T22:16:49.9983699+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55947 <-> substrate.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.0315676+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT steamcommunity.com:443
+2026-09-28T22:16:50.0317988+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55950 <-> steamcommunity.com:443 (proxied)
+2026-09-28T22:16:50.0318346+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55950 <-> steamcommunity.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.0529857+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55940 <-> community.steamstatic.com:443 (bypassed)
+2026-09-28T22:16:50.0530578+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55940 <-> community.steamstatic.com:443 bypassed
+2026-09-28T22:16:50.3155872+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT d23iz4esrwkib6.cloudfront.net:443
+2026-09-28T22:16:50.3158061+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55952 <-> d23iz4esrwkib6.cloudfront.net:443 (proxied)
+2026-09-28T22:16:50.3158385+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55952 <-> d23iz4esrwkib6.cloudfront.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.3848868+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT d23iz4esrwkib6.cloudfront.net:443
+2026-09-28T22:16:50.385099+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55954 <-> d23iz4esrwkib6.cloudfront.net:443 (proxied)
+2026-09-28T22:16:50.3851323+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55954 <-> d23iz4esrwkib6.cloudfront.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.4819801+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT d23iz4esrwkib6.cloudfront.net:443
+2026-09-28T22:16:50.482194+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55956 <-> d23iz4esrwkib6.cloudfront.net:443 (proxied)
+2026-09-28T22:16:50.4822333+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55956 <-> d23iz4esrwkib6.cloudfront.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.9711736+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT drivefrontend-pa.googleapis.com:443
+2026-09-28T22:16:50.9713928+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55958 <-> drivefrontend-pa.googleapis.com:443 (proxied)
+2026-09-28T22:16:50.971433+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55958 <-> drivefrontend-pa.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.9714577+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT signaler-pa.googleapis.com:443
+2026-09-28T22:16:50.9718067+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:55959 <-> signaler-pa.googleapis.com:443 (proxied)
+2026-09-28T22:16:50.9718491+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:55959 <-> signaler-pa.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:50.9889688+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT lh3.googleusercontent.com:443
+2026-09-28T22:16:50.989225+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59723 <-> lh3.googleusercontent.com:443 (proxied)
+2026-09-28T22:16:50.9892636+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59723 <-> lh3.googleusercontent.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:51.7740232+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:51.7750504+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:52.0339337+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT shared.steamstatic.com:443
+2026-09-28T22:16:52.0457553+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP CONNECT shared.steamstatic.com:443
+2026-09-28T22:16:52.1199318+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59726 <-> shared.steamstatic.com:443 (bypassed)
+2026-09-28T22:16:52.1200344+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59726 <-> shared.steamstatic.com:443 bypassed
+2026-09-28T22:16:52.1448489+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59728 <-> shared.steamstatic.com:443 (bypassed)
+2026-09-28T22:16:52.144911+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59728 <-> shared.steamstatic.com:443 bypassed
+2026-09-28T22:16:53.3861681+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT login.live.com:443
+2026-09-28T22:16:53.3863987+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59731 <-> login.live.com:443 (proxied)
+2026-09-28T22:16:53.3864384+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59731 <-> login.live.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:53.8328694+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET check.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:53.8704371+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:59733 <-> check.myth.cool:443 finished
+2026-09-28T22:16:53.8720836+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET check.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:53.9097855+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:59734 <-> check.myth.cool:443 finished
+2026-09-28T22:16:53.9113967+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET check.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:53.9489978+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:59735 <-> check.myth.cool:443 finished
+2026-09-28T22:16:54.5098158+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT consent.config.office.com:443
+2026-09-28T22:16:54.510048+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59736 <-> consent.config.office.com:443 (proxied)
+2026-09-28T22:16:54.5100842+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59736 <-> consent.config.office.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:54.7817496+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:54.7835226+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:54.9998954+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP POST client.myth.cool:443 HTTP/1.1
+2026-09-28T22:16:55.0337947+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP POST relay 127.0.0.1:59739 <-> client.myth.cool:443 finished
+2026-09-28T22:16:55.321485+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET api.live.bilibili.com:443 HTTP/1.1
+2026-09-28T22:16:55.3709304+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:59740 <-> api.live.bilibili.com:443 finished
+2026-09-28T22:16:56.0403298+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT discovery.roaming.windows.cloud.microsoft:443
+2026-09-28T22:16:56.0468626+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59743 <-> discovery.roaming.windows.cloud.microsoft:443 (proxied)
+2026-09-28T22:16:56.0469209+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59743 <-> discovery.roaming.windows.cloud.microsoft:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:56.6978783+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT activity.windows.com:443
+2026-09-28T22:16:56.6981074+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59745 <-> activity.windows.com:443 (proxied)
+2026-09-28T22:16:56.6981451+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59745 <-> activity.windows.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:56.7416508+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT devolutions.net:443
+2026-09-28T22:16:56.7465506+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:59748 <-> devolutions.net:443 (proxied)
+2026-09-28T22:16:56.7466453+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:59748 <-> devolutions.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:56.8900774+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT client.myth.cool:443
+2026-09-28T22:16:56.9325391+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62905 <-> client.myth.cool:443 (bypassed)
+2026-09-28T22:16:56.9326356+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62905 <-> client.myth.cool:443 bypassed
+2026-09-28T22:16:57.2394662+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 270, cap: 270, amt: 9575, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 31, cap: 31, amt: 2124, .. })
+2026-09-28T22:16:57.239629+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 698, cap: 698, amt: 10630, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 1538, cap: 1538, amt: 1789, .. })
+2026-09-28T22:16:57.2397328+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 397, cap: 397, amt: 9702, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 31, cap: 31, amt: 2090, .. })
+2026-09-28T22:16:57.7899888+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:16:57.7913544+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:16:58.1792425+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT go.microsoft.com:443
+2026-09-28T22:16:58.1795052+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62910 <-> go.microsoft.com:443 (proxied)
+2026-09-28T22:16:58.1795407+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62910 <-> go.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:58.3614912+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT inputsuggestions.msdxcdn.microsoft.com:443
+2026-09-28T22:16:58.3617787+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62912 <-> inputsuggestions.msdxcdn.microsoft.com:443 (proxied)
+2026-09-28T22:16:58.3618506+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62912 <-> inputsuggestions.msdxcdn.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:58.800851+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.oneget.org:443
+2026-09-28T22:16:58.8048941+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62915 <-> cdn.oneget.org:443 (proxied)
+2026-09-28T22:16:58.8049433+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62915 <-> cdn.oneget.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.0711395+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 4271, cap: 4271, amt: 4271, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 228, cap: 228, amt: 228, .. })
+2026-09-28T22:16:59.0713008+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 499, cap: 499, amt: 7466, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 244, cap: 244, amt: 244, .. })
+2026-09-28T22:16:59.1303886+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT storeedgefd.dsx.mp.microsoft.com:443
+2026-09-28T22:16:59.13067+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62917 <-> storeedgefd.dsx.mp.microsoft.com:443 (proxied)
+2026-09-28T22:16:59.1307165+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62917 <-> storeedgefd.dsx.mp.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.2636208+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.2636292+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.2637084+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.26396+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62921 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.2640241+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62921 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.2640547+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62920 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.2640594+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62919 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.2641152+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62920 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.2641347+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62919 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.2861542+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.winget.microsoft.com:443
+2026-09-28T22:16:59.286563+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62925 <-> cdn.winget.microsoft.com:443 (proxied)
+2026-09-28T22:16:59.2866368+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62925 <-> cdn.winget.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.2932925+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT index.crates.io:443
+2026-09-28T22:16:59.293663+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62927 <-> index.crates.io:443 (proxied)
+2026-09-28T22:16:59.2937299+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62927 <-> index.crates.io:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.4254538+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.425484+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.4254828+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT dc.services.visualstudio.com:443
+2026-09-28T22:16:59.4257852+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62931 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.4257985+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62929 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.4258111+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62930 <-> dc.services.visualstudio.com:443 (proxied)
+2026-09-28T22:16:59.4258383+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62929 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.4258384+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62931 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.4258828+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62930 <-> dc.services.visualstudio.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.6829002+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT go.microsoft.com:443
+2026-09-28T22:16:59.6831736+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62936 <-> go.microsoft.com:443 (proxied)
+2026-09-28T22:16:59.6832193+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62936 <-> go.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:16:59.867511+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.winget.microsoft.com:443
+2026-09-28T22:16:59.8677424+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62940 <-> cdn.winget.microsoft.com:443 (proxied)
+2026-09-28T22:16:59.8677827+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62940 <-> cdn.winget.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:00.0609233+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.oneget.org:443
+2026-09-28T22:17:00.0616125+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62942 <-> cdn.oneget.org:443 (proxied)
+2026-09-28T22:17:00.061662+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62942 <-> cdn.oneget.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:00.1729888+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT pypi.org:443
+2026-09-28T22:17:00.1732097+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62944 <-> pypi.org:443 (proxied)
+2026-09-28T22:17:00.1732452+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62944 <-> pypi.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:00.2060331+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:63821 <-> clientconfig.akamai.steamstatic.com:80 finished
+2026-09-28T22:17:00.3159648+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.winget.microsoft.com:443
+2026-09-28T22:17:00.3272605+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62946 <-> cdn.winget.microsoft.com:443 (proxied)
+2026-09-28T22:17:00.3273448+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62946 <-> cdn.winget.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:00.6566637+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:00.6587479+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:62951 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:00.7456314+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 4271, cap: 4271, amt: 4271, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 228, cap: 228, amt: 228, .. })
+2026-09-28T22:17:00.7457378+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 499, cap: 499, amt: 7466, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 244, cap: 244, amt: 244, .. })
+2026-09-28T22:17:00.7942518+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:00.7960363+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:01.6676879+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:01.6697044+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:62951 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:01.8508885+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT signaler-pa.googleapis.com:443
+2026-09-28T22:17:01.8721737+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62954 <-> signaler-pa.googleapis.com:443 (proxied)
+2026-09-28T22:17:01.8722889+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62954 <-> signaler-pa.googleapis.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:01.8823321+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 6764, cap: 6764, amt: 3698676, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 293, cap: 293, amt: 373, .. })
+2026-09-28T22:17:01.8824376+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 598, cap: 598, amt: 10954, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 52, cap: 52, amt: 392, .. })
+2026-09-28T22:17:02.6749012+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:02.6770379+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:62951 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:03.5915156+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.winget.microsoft.com:443
+2026-09-28T22:17:03.5917389+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62956 <-> cdn.winget.microsoft.com:443 (proxied)
+2026-09-28T22:17:03.591781+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62956 <-> cdn.winget.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:03.6897171+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT cdn.winget.microsoft.com:443
+2026-09-28T22:17:03.6899351+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:62959 <-> cdn.winget.microsoft.com:443 (proxied)
+2026-09-28T22:17:03.6899716+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:62959 <-> cdn.winget.microsoft.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:03.8010778+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:03.8053353+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:06.8246614+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:06.837399+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:08.6339896+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT registry.npmjs.org:443
+2026-09-28T22:17:08.6342229+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:58906 <-> registry.npmjs.org:443 (proxied)
+2026-09-28T22:17:08.6342674+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:58906 <-> registry.npmjs.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:08.6359606+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT registry.npmjs.org:443
+2026-09-28T22:17:08.6361628+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:58907 <-> registry.npmjs.org:443 (proxied)
+2026-09-28T22:17:08.6361923+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:58907 <-> registry.npmjs.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:08.6700814+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT registry.npmjs.org:443
+2026-09-28T22:17:08.6703049+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:58909 <-> registry.npmjs.org:443 (proxied)
+2026-09-28T22:17:08.6703423+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:58909 <-> registry.npmjs.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:08.6711826+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: HTTP CONNECT registry.npmjs.org:443
+2026-09-28T22:17:08.6713821+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:58911 <-> registry.npmjs.org:443 (proxied)
+2026-09-28T22:17:08.6714094+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:58911 <-> registry.npmjs.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:08.6714172+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT registry.npmjs.org:443
+2026-09-28T22:17:08.6717494+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:58912 <-> registry.npmjs.org:443 (proxied)
+2026-09-28T22:17:08.6717732+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:58912 <-> registry.npmjs.org:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:09.4549425+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT assets.msn.com:443
+2026-09-28T22:17:09.4552075+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:57035 <-> assets.msn.com:443 (proxied)
+2026-09-28T22:17:09.4552505+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:57035 <-> assets.msn.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:09.8439702+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:09.8461274+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:10.1924233+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 871, cap: 871, amt: 3810, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 519, cap: 519, amt: 612, .. })
+2026-09-28T22:17:10.1925416+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 868, cap: 868, amt: 3807, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 511, cap: 511, amt: 604, .. })
+2026-09-28T22:17:10.1925832+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 871, cap: 871, amt: 3811, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 509, cap: 509, amt: 602, .. })
+2026-09-28T22:17:10.1926158+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 43479, cap: 43479, amt: 1701481, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 517, cap: 517, amt: 610, .. })
+2026-09-28T22:17:10.1926129+08:00 DEBUG tokio-rt-worker ThreadId(25) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 10690, cap: 10690, amt: 2867765, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 519, cap: 519, amt: 612, .. })
+2026-09-28T22:17:10.2510975+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT services.addons.thunderbird.net:443
+2026-09-28T22:17:10.2513712+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:57042 <-> services.addons.thunderbird.net:443 (proxied)
+2026-09-28T22:17:10.2514858+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:57042 <-> services.addons.thunderbird.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:10.8559421+08:00 ERROR tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::server: HTTP connection 127.0.0.1:51747 handler failed with error: error from user's Service
+2026-09-28T22:17:10.9314255+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT notifications.thunderbird.net:443
+2026-09-28T22:17:10.9383465+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:57047 <-> notifications.thunderbird.net:443 (proxied)
+2026-09-28T22:17:10.9384868+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:57047 <-> notifications.thunderbird.net:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:10.9637961+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP CONNECT login.microsoftonline.com:443
+2026-09-28T22:17:10.9642186+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:57049 <-> login.microsoftonline.com:443 (proxied)
+2026-09-28T22:17:10.9642816+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:57049 <-> login.microsoftonline.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:11.8145337+08:00 DEBUG tokio-rt-worker ThreadId(10) shadowsocks_service::local::http::http_service: HTTP POST disabled.invalid:80 HTTP/1.1
+2026-09-28T22:17:12.8612703+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:12.8633043+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:15.8746802+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:15.8782546+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:18.8831246+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:18.8874091+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:19.8505644+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks::relay::tcprelay::utils: copy bidirection ends with error: 远程主机强迫关闭了一个现有的连接。 (os error 10054), a_to_b: Running(CopyBuffer { read_done: false, pos: 1117, cap: 1117, amt: 7019, .. }), b_to_a: Running(CopyBuffer { read_done: false, pos: 471, cap: 471, amt: 551, .. })
+2026-09-28T22:17:20.9662053+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP CONNECT browser.events.data.msn.com:443
+2026-09-28T22:17:20.9666974+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: CONNECT relay connected 127.0.0.1:57060 <-> browser.events.data.msn.com:443 (proxied)
+2026-09-28T22:17:20.9667675+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::utils: established tcp tunnel 127.0.0.1:57060 <-> browser.events.data.msn.com:443 through server 127.0.0.1:49671 (outbound: 23.105.206.76:9684)
+2026-09-28T22:17:21.8957361+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:21.8991758+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:24.9039909+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:24.9121139+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:27.7435901+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET c.pki.goog:80 HTTP/1.1
+2026-09-28T22:17:27.8645252+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> c.pki.goog:80 finished
+2026-09-28T22:17:27.8853018+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET x1.c.lencr.org:80 HTTP/1.1
+2026-09-28T22:17:27.9180676+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:27.9220577+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:51730 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:28.079252+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> x1.c.lencr.org:80 finished
+2026-09-28T22:17:28.0898645+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET x2.c.lencr.org:80 HTTP/1.1
+2026-09-28T22:17:28.3929515+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> x2.c.lencr.org:80 finished
+2026-09-28T22:17:28.4079254+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET ye.c.lencr.org:80 HTTP/1.1
+2026-09-28T22:17:28.5924759+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> ye.c.lencr.org:80 finished
+2026-09-28T22:17:28.6012297+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET c.pki.goog:80 HTTP/1.1
+2026-09-28T22:17:28.6750249+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> c.pki.goog:80 finished
+2026-09-28T22:17:28.8571785+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET ctldl.windowsupdate.com:80 HTTP/1.1
+2026-09-28T22:17:28.8698211+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET 127.0.0.1:1042 HTTP/1.1
+2026-09-28T22:17:28.8719827+08:00 DEBUG tokio-rt-worker ThreadId(26) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57080 <-> 127.0.0.1:1042 finished
+2026-09-28T22:17:29.037942+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> ctldl.windowsupdate.com:80 finished
+2026-09-28T22:17:29.044931+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET c.pki.goog:80 HTTP/1.1
+2026-09-28T22:17:29.1181127+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> c.pki.goog:80 finished
+2026-09-28T22:17:29.1274419+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET oneocsp.microsoft.com:80 HTTP/1.1
+2026-09-28T22:17:29.3154456+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> oneocsp.microsoft.com:80 finished
+2026-09-28T22:17:29.3325739+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET ctldl.windowsupdate.com:80 HTTP/1.1
+2026-09-28T22:17:29.5157072+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> ctldl.windowsupdate.com:80 finished
+2026-09-28T22:17:29.5264326+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET oneocsp.microsoft.com:80 HTTP/1.1
+2026-09-28T22:17:29.7115581+08:00 DEBUG tokio-rt-worker ThreadId(04) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> oneocsp.microsoft.com:80 finished
+2026-09-28T22:17:29.7172929+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET c.pki.goog:80 HTTP/1.1
+2026-09-28T22:17:29.7903699+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> c.pki.goog:80 finished
+2026-09-28T22:17:29.7994215+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET c.pki.goog:80 HTTP/1.1
+2026-09-28T22:17:29.8720909+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET relay 127.0.0.1:57070 <-> c.pki.goog:80 finished
+2026-09-28T22:17:29.8778348+08:00 DEBUG tokio-rt-worker ThreadId(27) shadowsocks_service::local::http::http_service: HTTP GET yr.c.lencr.org:80 HTTP/1.1

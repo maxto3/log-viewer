@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.logviewer.LogViewer</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Log Viewer</name>
+  <name xml:lang="zh_CN">Log Viewer 日志查看器</name>
+  <summary>Read, search and follow log files</summary>
+  <summary xml:lang="zh_CN">阅读、搜索并实时跟随日志文件</summary>
+  <description>
+    <p>
+      Log Viewer presents text log files in a table: one entry per line with the
+      timestamp, level, thread, source and message. Long messages are truncated
+      in the table and shown completely in the details pane.
+    </p>
+    <p>
+      Find highlights matches without hiding rows; Filter hides rows that do not
+      match the level, time range or keyword. Messages containing JSON, XML or
+      YAML fragments are highlighted with the Visual Studio Code colour scheme.
+      A single file can be followed live ("tail -f" style).
+    </p>
+  </description>
+  <launchable type="desktop-id">log-viewer.desktop</launchable>
+  <url type="homepage">https://example.invalid/log-viewer</url>
+  <provides>
+    <binary>log-viewer</binary>
+    <mediatype>text/x-log</mediatype>
+    <mediatype>application/x-ndjson</mediatype>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.2.0" date="2026-09-29"/>
+  </releases>
+</component>
