@@ -53,6 +53,10 @@ public:
     const LogEntry *entry(int row) const;
     /// Preferred initial column width in pixels.
     int preferredColumnWidth(int column) const;
+    /// Re-emits the horizontal header data so the views repaint the titles with
+    /// the current translator (REQ-I18N-02: the titles are translated on demand,
+    /// a language switch does not rebuild the columns).
+    void retranslateHeaders();
 
     // Column visibility (REQ-TABLE-11) --------------------------------------
     /// Hidden columns keep their data and width, but the view hides them and the
@@ -107,7 +111,6 @@ private:
     struct Column {
         ColumnKind kind = ColumnKind::Message;
         QString extraKey;
-        QString title;
         int preferredWidth = 120;
     };
 

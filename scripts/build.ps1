@@ -6,6 +6,7 @@
 .DESCRIPTION
     Locates the Visual Studio installation, imports the MSVC x64 environment
     (vcvars64.bat) and then drives the CMake preset "windows-msvc-qt6-<config>".
+    The project version is read from CMakeLists.txt (single source of truth).
 
 .EXAMPLE
     .\scripts\build.ps1
@@ -23,6 +24,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'common.ps1')
+$version = Get-LogViewerVersion -RepoRoot $repoRoot
 $preset = if ($Config -eq 'Debug') { 'windows-msvc-qt6-debug' } else { 'windows-msvc-qt6-release' }
 $buildDir = Join-Path $repoRoot "build\$preset"
 
@@ -47,6 +50,7 @@ function Find-VcVars64 {
 }
 
 $vcvars = Find-VcVars64
+Write-Host "Building log-viewer $version ($Config)"
 Write-Host "Using MSVC environment: $vcvars"
 
 if ($Clean -and (Test-Path $buildDir)) {
@@ -70,7 +74,7 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
 $exe = Join-Path $buildDir 'bin\log-viewer.exe'
 if (Test-Path $exe) {
-    Write-Host "Built: $exe"
+    Write-Host "Built: $exe (log-viewer $version)"
 } else {
     Write-Warning "Build succeeded but $exe was not found."
 }

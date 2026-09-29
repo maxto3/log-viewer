@@ -91,7 +91,9 @@ log-viewer/
 ├─ CMakeLists.txt                 # 顶层：C++20、Qt6 组件、i18n、测试、install/CPack
 ├─ CMakePresets.json              # windows-msvc-qt6-release / linux-gcc-release
 ├─ .gitignore
-├─ spec.md  design-doc.md         # 需求与设计文档
+├─ docs/
+│   ├─ spec.md                   # 需求规格说明书（唯一权威来源）
+│   └─ design-doc.md             # 技术设计与实施记录
 ├─ README.md  README.zh_CN.md     # 用户文档（含双平台构建与未验证声明）
 ├─ scripts/
 │   ├─ install-qt.ps1             # Windows：aqtinstall 下载 Qt 6.8.3 msvc2022_64
@@ -105,7 +107,7 @@ log-viewer/
 │   │   ├─ org.logviewer.LogViewer.metainfo.xml   # AppStream
 │   │   ├─ icons/hicolor/*/apps/log-viewer.{svg,png}
 │   │   └─ deb/CPackDeb.cmake             # 包名/依赖/安装路径
-│   └─ windows/app.rc                     # 版本资源（exe 属性页）
+│   └─ windows/log-viewer.{ico,rc.in}     # 应用图标（编译进 exe，由 Linux 图标渲染）
 ├─ src/
 │  ├─ main.cpp
 │  ├─ app/
@@ -134,7 +136,7 @@ log-viewer/
 │  │             AboutDialog  StatusBarWidget  DemoData（--demo 自检数据）
 │  └─ i18n/logviewer_zh_CN.ts
 ├─ resources/
-│  ├─ resources.qrc  icons/*.svg  themes/vscode_tokens.json
+│  ├─ resources.qrc  icons/log-viewer-*.png  themes/vscode_tokens.json
 └─ tests/
    ├─ CMakeLists.txt  data/（附件真样本 + 各格式样本 + CRLF/LF/GBK/UTF-16 样本）
    ├─ tst_formats  tst_matcher  tst_timestamp  tst_snippets  tst_lineindex
@@ -327,6 +329,9 @@ public:
 | `highlight/HighlightTheme` | VSCode Dark+ / Light+ token 配色常量表；默认跟随应用主题，可由 Settings ▸ Appearance ▸ Syntax Highlighting 强制指定（REQ-HL-03） |
 | `highlight/MessageTextHighlighter` | 详情面板的 `QSyntaxHighlighter`：对整段消息 token 化后按文本块映射偏移，支持跨行的 YAML/JSON 片段（REQ-HL-06） |
 | 导出 | File ▸ Export Filtered Results（Ctrl+E）：按当前可见行导出 CSV（含表头、RFC4180 引号转义）或制表符分隔文本，UTF-8 |
+| 面板折叠与全屏 | `FilterPanel::setCollapsed()` 只切换输入行容器的可见性——已生效条件与输入内容不受影响（REQ-UI-13）；标题栏右上角的 `QToolButton` 由 `resizeEvent` 定位（`resizeEvent` + `move()`，随窗口尺寸变化保持在标题行内）。`MainWindow::applyFullScreenState()` 响应 `QEvent::WindowStateChange`：进入全屏时记录并折叠面板，退出时恢复（REQ-UI-14）；`Esc` 由仅在全屏期间启用的 `QShortcut` 处理，F11 勾选项与窗口状态双向同步（含窗口系统发起的全屏变化）。全屏切换使用 `showFullScreen()` / `showMaximized()` / `showNormal()` 而非 `setWindowState()`——后者在"最大化 → 全屏"时保留 `WindowMaximized` 标志，Windows 下窗口会向右偏移约 48 逻辑像素，右边缘的折叠按钮被裁到屏幕外；关闭窗口时若仍处于全屏，保存的是进入全屏前记录的几何（REQ-UI-14：全屏不持久化） |
+
+打开耗时（REQ-UI-15）：`MainWindow::openPaths()` 用 `QElapsedTimer` 测量打开操作，并扣除「大文件是否继续加载」对话框的等待时间，然后交给 `core/DurationFormat::formatDuration()` 生成自适应文本，写入状态栏左下角的**普通指示标签**（`statusBar()->addWidget()`，临时消息显示期间暂时让位）。计时覆盖同一调用栈内的全部同步工作：解析/建索引、模型挂载，以及**完整内容模式（详情框关闭）下的一次性行高计算**——因此数值会随该模式显著变化（大文档尤为明显；实测约 1.8 万行样本：详情框开启 0.69 s，关闭时因整篇行高 pass 为 16 s）。Refresh 重新打开后更新；关闭文档与 `--demo` 演示数据清除；`retranslateUi()` 在语言切换时按保存的毫秒数重新生成文本（`%1 s` / `%1 min %2 s` / `%1 h %2 min %3 s` 等分量为 0 时省略高位分量）。
 
 监控实现（`LogWatcher`，对应 REQ-MON）：
 
@@ -353,10 +358,11 @@ public:
 行键与缓存（回归缺陷修复）：行高缓存与行内展开状态都以**行键**为索引，键 = `(源序号 << 40) | 源内行号`（`LogTableView::rowKey()`）。早期实现用「起始物理行」作键，对 XML 类**文档格式**（一行内含多个事件）必然冲突——实测 `test-event-logs.xml` 的 3620 个事件全在同一物理行，导致所有行共用同一高度（513 行被截断）。过滤/排序后由 `LogTableModel::sourceRow()` 映射回源内行号，键保持稳定。
 
 行高计算策略（`LogTableView`）：
-- 高度按"消息列当前像素宽 + 内容"计算，结果按 `(行键, 列宽)` 缓存；行键 = `(源序号, 起始物理行)`，因此刷新/过滤后仍然稳定。
+- 高度按**所有可见列**中最高的单元格计算（`contentHeightForRow()`，回归缺陷修复：原先只按消息列，长目标 + 短消息的行会把目标文本画到分隔线上）。为控制开销，先算消息列（通常是最高单元格）作基准，其余列用 `lineCountForCell(index, width, lines + 1)` **探测**"是否超过基准"：探测在基准 +1 行处截断布局，只有真正超过基准的列才完整计算；单段且宽度足够的短列（行号/时间/级别/线程）走宽度快速路径、不做文本布局。实测 4664 行文档的完整内容模式行高 pass 开销增加约 30%。结果按 `(行键, 消息列宽)` 缓存；行键 = `(源序号, 源内行号)`，因此刷新/过滤后仍然稳定。
+- 行高依赖所有列宽：任意列的宽度变化都会清空行高缓存，并合并（延迟一次）为一次重算——大文档（> 5000 行）拖动列宽时只更新可见行，其余行在滚动时逐行精确化（与既有策略一致）。
 - 完整内容模式下：文档 ≤ 50,000 行时一次性计算全部行高（等待光标 + 暂停重绘）；超过上限时用抽样（最多 1000 行）估计默认行高，滚动时逐行精确化（避免 100 万行 × 文本排版的卡顿）。
-- 表头拉伸列宽在首次布局时尚未生效，因此 `scheduleHeightRefresh()` 会在事件循环空闲时校验"上次行高计算所用的列宽"，不一致则重算（自愈，避免用过窄列宽算出的超高行）。
-- 单次扫描固定一个列宽快照（`passWidth`），并且**不丢弃**"扫描进行中到达的列宽变化"（`m_heightRefreshNeeded` + 延迟重算），否则部分行会保留旧列宽下的高度。
+- 表头拉伸列宽在首次布局时尚未生效，因此 `scheduleHeightRefresh()` 会在事件循环空闲时校验"上次行高计算所用的**列宽快照**"（`columnWidthSnapshot()`，所有可见列一条记录），不一致则重算（自愈，避免用过窄列宽算出的超高行）。
+- 单次扫描在开始时固定一个列宽快照（`passWidths`）并贯穿整轮计算，结束时把该快照记为"本轮所用宽度"；扫描进行中到达的列宽变化会使快照比对发现差异并触发一次完整重算，因此不会残留旧列宽下的高度。
 
 - 首次点击行时创建/显示（REQ-DETAIL-01）；`QSplitter` 承载：右侧布局 = 水平分割（左 Log / 右 Details），底部布局 = 垂直分割。
 - 结构：`QFormLayout` 字段表（字段名 `QFont::Bold`）+ `QPlainTextEdit`（只读、等宽、`NoWrap` 可切、`QSyntaxHighlighter` 高亮）+ 复制按钮行。
@@ -444,7 +450,7 @@ TokenKind：`Plain, Timestamp, Level{PerLevel}, Keyword, Key, String, Number, Ke
 
 ### 5.6 渲染路径
 
-- **表格**：`LogItemDelegate::paint()` 只处理可见单元格；`QTextLayout`（两行换行 + 省略号裁剪，`WrapAtWordBoundaryOrAnywhere`）绘制，`FormatRange` 来自 `MessageHighlighter` 缓存；`sizeHint()` 的高度取 `defaultRowHeight()`（行高由视图统一管理），**宽度按单元格完整文本计算**（+左右内边距，级别列再加 chip 内边距并用粗体，上限 2000 px、长行只测前 512 字符）——`resizeColumnToContents()`（右键 Auto-fit Columns 与双击列边界）依赖该宽度，回显当前宽度会让所有列被压成同一最小值；行高缓存 key = (行版本, 列宽, 字体)。单元格背景由 delegate 自绘，因此**斑马纹**（REQ-TABLE-09）由 `index.row() % 2` 选取 `Base` / `AlternateBase`（视图的 `alternatingRowColors` 被整格填充覆盖、不可能透出；按显示行序交替，过滤后仍逐行交错），选中行改用 `Highlight`；**单元格分隔线**（REQ-TABLE-10）在每格右缘与下缘各画一条 1px 线（深色 `#3A3A3E` / 浅色 `#D9D9DD`，与 `LogHeaderView` 的列分隔线同色，两处需同步修改）。
+- **表格**：`LogItemDelegate::paint()` 只处理可见单元格（以 `option.rect` 作 `IntersectClip`，单元格内容**永不越界**——段落自身的裁剪也用 `IntersectClip`，早期用默认的 `ReplaceClip` 会替换掉单元格裁剪，行高不足时文本会画到分隔线之外）；`QTextLayout`（两行换行 + 省略号裁剪，`WrapAtWordBoundaryOrAnywhere`）绘制，`FormatRange` 来自 `MessageHighlighter` 缓存；`sizeHint()` 的高度取 `defaultRowHeight()`（行高由视图统一管理），**宽度按单元格完整文本计算**（+左右内边距，级别列再加 chip 内边距并用粗体，上限 2000 px、长行只测前 512 字符）——`resizeColumnToContents()`（右键 Auto-fit Columns 与双击列边界）依赖该宽度，回显当前宽度会让所有列被压成同一最小值；行高缓存 key = (行键, 消息列宽)，字体/任意列宽变化或列显隐切换都会清空缓存（见 §4.8 行高策略）。单元格背景由 delegate 自绘，因此**斑马纹**（REQ-TABLE-09）由 `index.row() % 2` 选取 `Base` / `AlternateBase`（视图的 `alternatingRowColors` 被整格填充覆盖、不可能透出；按显示行序交替，过滤后仍逐行交错），选中行改用 `Highlight`；**单元格分隔线**（REQ-TABLE-10）在每格右缘与下缘各画一条 1px 线（深色 `#3A3A3E` / 浅色 `#D9D9DD`，与 `LogHeaderView` 的列分隔线同色，两处需同步修改）。
 - **详情面板**：`MessageTextHighlighter : QSyntaxHighlighter` 处理整段文本（支持跨行片段），关键词高亮用 `QTextCharFormat` 覆盖。
 
 ## 6. 界面布局与菜单结构
@@ -479,6 +485,10 @@ TokenKind：`Plain, Timestamp, Level{PerLevel}, Keyword, Key, String, Number, Ke
 
 底部布局时：`Details` 分组框移至 `Log` 分组框下方（垂直分割），两者仍保持同宽对齐。
 
+折叠态（REQ-UI-13）：分组框只保留标题一行，标题栏右侧的切换按钮由 `▾` 变为 `▸`，其下内容整体上移，`Log` 分组框获得释放的纵向空间；`Settings ▸ Full Screen`（REQ-UI-14）进入全屏时该分组框自动折叠。折叠只隐藏输入行——已生效的 Find / Filter / 级别 / 时间条件继续生效。
+
+状态栏（REQ-UI-15）：**左下角**显示最近一次打开日志的耗时（普通指示区，例如 `Loaded in 0.35 s`；临时消息如复制提示显示期间暂时让位），右侧依次为文件名、格式/编码/行数、Monitor 状态（永久指示区）。
+
 ### 6.2 尺寸与对齐规范
 
 | 元素 | 规范 |
@@ -486,13 +496,13 @@ TokenKind：`Plain, Timestamp, Level{PerLevel}, Keyword, Key, String, Number, Ke
 | 内容列 | **随窗口宽度伸展，无最大宽度限制**；左右外边距 16 px 对称；所有分组框左右边界对齐（同宽）；最大化时铺满可用像素（REQ-VIS-02 已更新） |
 | 窗口尺寸 | 默认 1600×950；若可用屏幕不足则取 `min(默认, 可用 × 0.92)`；最小 `min(1280×720, 可用)`；高 DPI 下按逻辑像素计算（REQ-PLAT-06） |
 | 分组框间距 | 垂直 12 px；内部边距 8 px、控件间距 8 px（表单行 6 px） |
-| Search & Filter 分组框 | 固定高度（约 150 px），不参与纵向拉伸 |
+| Search & Filter 分组框 | 展开时固定高度（约 150 px）、不参与纵向拉伸；可折叠为标题单行（切换按钮位于标题栏右侧，REQ-UI-13） |
 | Log 分组框 | 伸缩因子 1；右侧布局时与 Details 水平分割比默认 62:38，底部布局时 68:32 |
 | Details 分组框 | 初始隐藏；出现后最小 320×180 px |
 | 表格表头 | 高度 = 字体行高 × 1.6；加粗；渐变背景（Light `#FAFAFA→#E4E4E4`，Dark `#3C3C3C→#2D2D2D`）+ 底边 1 px `#C8C8C8`/`#1F1F1F`；列内文字左对齐、垂直居中 |
 | 表格单元格 | 行高 = 两行文本高度 + 6 px 内边距；左对齐、垂直居中；超长以 `…` 收尾；列右边界 1 px 网格线（`#E8E8E8`/`#2A2A2A`） |
 | 详情字段名 | 加粗；字段与值两列；值列可选中 |
-| 状态栏 | 单行；`·` 分隔；Monitor 生效时显示绿色圆点 |
+| 状态栏 | 单行；**左下角**为最近一次打开日志的耗时标签（`Loaded in …`，REQ-UI-15；普通指示区，临时提示显示时暂时让位）；右侧为永久指示区：文件名 / 格式 / 编码 / 行数（`·` 分隔）、Monitor 状态（生效时显示绿色圆点） |
 
 ### 6.3 菜单结构
 
@@ -524,12 +534,14 @@ Settings
  │   └─ Layout ▸                 （只影响详情框位置，关闭详情框时置灰）
  │       ├─ Details: Right   (•)
  │       └─ Details: Bottom
- └─ Appearance ▸
-     ├─ Theme ▸ Light (•) / Dark / Follow System
-     ├─ Syntax Highlighting ▸ Follow Theme (•) / VSCode Dark+ / VSCode Light+
-     ├─ Highlight Color…
-     ├─ ─────────
-     └─ Reset All Settings
+ ├─ Appearance ▸
+ │   ├─ Theme ▸ Light (•) / Dark / Follow System
+ │   ├─ Syntax Highlighting ▸ Follow Theme (•) / VSCode Dark+ / VSCode Light+
+ │   ├─ Highlight Color…
+ │   ├─ ─────────
+ │   └─ Reset All Settings
+ ├─ ────────────
+ └─ Full Screen                   F11（勾选项；进入时自动折叠查询与过滤分组框，Esc 退出）
 
 Columns              ← 菜单栏顶级项（位于 Settings 与 About 之间，REQ-UI-12）
  ├─ 行号                （常显，禁用项，悬停提示）
@@ -558,7 +570,9 @@ About                ← 菜单栏顶级项（与 File / Settings 平级），�
 | 输入过程 | 不刷新表格：Find 的高亮与 Filter 的行过滤都只在提交后生效（清空输入框立即生效） |
 | `Ctrl+O` / `F5` / `Ctrl+W` / `Ctrl+Q` | 打开 / 刷新 / 关闭文档 / 退出 |
 | `Ctrl+M` | 切换 Monitor（tail -f，仅文件型文档可用） |
-| `Esc` | 优先取消行内展开；若无展开则清除 Find 高亮 |
+| `F11` / Settings ▸ Full Screen | 进入 / 退出全屏（REQ-UI-14）：进入时自动折叠查询与过滤分组框 |
+| `Esc` | **全屏时退出全屏**并恢复进入前的折叠状态（REQ-UI-14；该快捷键仅在全屏期间启用）；非全屏时为设计保留的「优先取消行内展开；若无展开则清除 Find 高亮」 |
+| 标题栏右侧 `▾` / `▸` | 折叠 / 展开查询与过滤分组框（REQ-UI-13）：只隐藏输入行，已生效条件继续生效 |
 | `Ctrl` + 滚轮 | 表格字体临时缩放（10%～200%，会话内，不改设置） |
 | 拖拽文件到窗口 | 按 REQ-FILE-02/04 处理（Windows 资源管理器 / Linux 文件管理器）：`MainWindow` 接受拖放，子控件（查找/过滤输入框、表格视图、详情消息区）关闭自身拖放以免吞掉事件；仅接受本地文件，文件夹忽略并提示 |
 
@@ -797,7 +811,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | --- | --- | --- | --- |
 | 设置入口 | `SettingsDialog`（Font/Language/Layout/Appearance/About 五页） | Settings 菜单直改（子菜单 + QFontDialog / QColorDialog / AboutDialog） | 与 `spec.md` REQ-UI-02…06 的菜单结构一致，避免重复入口 |
 | 过滤面板类拆分 | FindPanel / SearchFilterPanel / LevelFilterBar / TimeRangePanel 四个类 | 单一 `FilterPanel` 类 | M1 控件数量有限，拆分留待 M3 接入引擎时按需进行 |
-| 状态栏 | `StatusBarWidget` 独立类 | 内联在 `MainWindow` | 三个 QLabel，无需独立类 |
+| 状态栏 | `StatusBarWidget` 独立类 | 内联在 `MainWindow` | 四个 QLabel（左下耗时标签 + 右侧文件名/统计/Monitor），耗时文本由 `core/DurationFormat` 生成，无需独立类 |
 | M2 内容提前 | 仅 M1 骨架 | 同时落地了 `LineIndex`、`LogSource`、`tracing`/`generic` 解析器、`LogTableModel`、表头样式、截断与复制交互、详情面板 | 让 M1 可用真实日志验收，而不是只能看空壳界面 |
 
 ### 16.3 开发辅助工具（已实现）
@@ -805,7 +819,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 工具 | 用法 | 说明 |
 | --- | --- | --- |
 | 演示数据 | `log-viewer --demo` | 覆盖全部日志级别、超长消息、内嵌 JSON/XML/YAML 片段、多行条目；用于界面预览与截图 |
-| 布局自检 | 设置环境变量 `LOGVIEWER_DUMP_LAYOUT=<文件路径>` | 启动 1.2 s 后把窗口/内容列/分组框/表格/详情面板的尺寸与 `minimumSizeHint` 写入文件，2.2 s 后自动退出；用于布局回归与 DPI 排查 |
+| 布局自检 | 设置环境变量 `LOGVIEWER_DUMP_LAYOUT=<文件路径>` | 启动 1.2 s 后把窗口/内容列/分组框/表格/详情面板的尺寸与 `minimumSizeHint` 写入文件（含 `filterCollapse` 行：折叠状态、切换按钮的几何与可见区域），2.2 s 后自动退出；用于布局回归与 DPI 排查 |
 | UI 截图脚本 | `capture-ui.ps1`（scripts 目录外，本地验证用） | 进程 DPI 感知 + 点击 + 窗口位图导出；产出 `screenshots/*.png` |
 
 ### 16.4 M2 交接清单
@@ -837,6 +851,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | M4 多文件合并 | `core/LogDocument`：同格式校验（不一致时拒绝并说明）、按时间 k 路归并、无时间戳时按打开顺序拼接并提示、`File` 列通过 `IEntryProvider::sourceName(entry.sourceIndex)` 显示每个条目所属文件 | `tst_document` 6 个用例 |
 | M6 打包 | `scripts/package.ps1` 生成便携目录（exe + Qt DLL/插件/翻译 + 文档，约 31 MB）；`scripts/register-association.ps1`（HKCU、可撤销、默认仅 `.log`）；Linux 侧 `packaging/linux/`（.desktop、AppStream、hicolor 图标、CPack DEB 配置）与 `scripts/*.sh`（build/test/run/package-deb/register-association） | 便携目录已实际运行验证（`--version`、打开真实日志 17958 条）；Linux 侧为静态交付（REQ-PLAT-10） |
 | M6 文档 | `README.md`（英文）与 `README.zh_CN.md`（中文）：功能表、双平台构建/运行/打包、命令行、快捷键、菜单、设置位置、目录结构；`LICENSE`（MIT） | 已入库 |
+| UI 折叠与全屏 | 查询与过滤分组框可折叠为标题单行（REQ-UI-13）；Settings ▸ Full Screen（REQ-UI-14，F11）进入全屏时自动折叠该分组框，`Esc` 退出全屏并恢复进入前的折叠状态与最大化状态；关闭窗口时不保存全屏几何；两者均不写入设置 | `tst_mainwindow_behavior` 新增 2 个用例：折叠高度约为展开的一半且表格获得空间、条件在折叠后继续生效；F11 / Esc 往返、折叠状态恢复与最大化往返 |
 
 **尚未完成（诚实记录）**
 
@@ -845,6 +860,26 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 3. **后台索引与进度**：索引、条目分组与过滤仍在 UI 线程同步执行（大文件时显示等待光标），尚未迁移到 `JobRunner`；100 万行基准脚本未编写。
 4. **详情框行内展开上限**：完整内容模式引擎保留但 UI 不暴露（见 §4.8）。
 5. `windeployqt` 未部署 VC 运行时与 d3d 编译器垫片，分发目录在目标机需要 VC++ 运行库（README 已说明）。
+
+### 16.7 打开大文件性能修复（2026-09-29）
+
+背景：命令行 / 双击打开 6.9 MB（38035 行）的 `sslocal.2026-09-27.log` 实测约 71 秒（用户报告"超过半分钟"；状态栏「加载耗时」显示约 1 分 11 秒）。逐段计时定位到三处放大：
+
+| # | 根因 | 观测 | 修复 |
+| --- | --- | --- | --- |
+| 1 | `LogTableView::updateVisibleRowHeights()` 取不到末行时兜底为**整篇文档**：日志在窗口首次布局前打开（`viewport()->height() == 0`，`rowAt()` 返回 -1），而列宽应用 / 恢复会逐个 `setColumnWidth`，每次都在 `onSectionResized()` 里同步触发一次全量行高计算 | 单次 `setColumnWidth` 约 4.4–5.7 s，一次打开累计 50 s 以上 | 只更新视口内可见行；视口高度为 0（尚未布局）时直接返回，由 `applyRowHeights()` 与首次 resize/scroll 补齐 |
+| 2 | `MainWindow::setProvider()` 期间每个中间步骤各跑一次完整行高 pass（model reset、列显隐、Columns 菜单重建） | 38035 行 × 3 次 | 新增 `LogTableView::setHeightPassSuspended()`：挂起期间只失效缓存，恢复时统一跑一次；`setProvider()` / `onDocumentRebuilt()` 使用 |
+| 3 | `LogSource::readRawLine()` 每读一行重开一次文件 | 建条目索引 76270 次 open（约 0.87 s）、级别统计 38031 次（约 0.54 s） | 新增 `beginBulkRead()` / `endBulkRead()`（RAII `BulkReadScope`）：格式探测、条目索引、级别统计期间保持句柄，pass 结束立即关闭——两次 pass 之间不持有句柄，轮转/改名语义不变 |
+
+实测（Release，本机 4K/200%；状态栏「加载耗时」，Windows UI Automation 读取）：
+
+| 文件 | 行数 | 修复前 | 修复后 |
+| --- | --- | --- | --- |
+| `sslocal.2026-09-27.log`（6.9 MB） | 38035 | 约 71 s | **3.19 s** |
+| `test-event-logs.txt`（5.4 MB） | 27518 | 未逐项实测 | **2.82 s** |
+| `sslocal.2026-09-28.log`（3.4 MB） | 17958 | 约 16 s（§4.8 记录） | **1.28 s** |
+
+验证：`ctest` 14/14 通过；三个真实样本的 `LOGVIEWER_DUMP_LAYOUT` 输出均为 `fullContent=1, truncatedRows=0`（完整内容模式行高仍精确、无截断）。双击启动到窗口可用的墙钟时间约 4.6 s，其中 `MainWindow::show()` 本身约 1.6 s（与日志无关，空窗口同样存在，用户决定暂不处理）。
 
 ## 15. 修订记录
 
@@ -882,3 +917,8 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 1.29 | 2026-09-29 | AI 助手 | 列宽自适应改为**严格内容宽度**（§4.1 段落更新）：`内容 + kFitSafetyPixels(2)`、表头标题更宽时取 `headerTitleWidth()`、下限 `kMinFittedColumnWidth(36)`、上限 600 px——时间列不再用 215 px 最小宽度预留（留白约 50 px 的根因）；新增 `LogTableView::headerTitleWidth()`；用例增加宽度上界断言 |
 | 1.30 | 2026-09-29 | AI 助手 | 级别列完整显示（§4.1 段落更新）：新增 `LogTableView::contentWidthHint()`（前 500 行连续 + 其后 3500 行均匀抽样）并覆盖 `sizeHintForColumn()`——Qt 自带实现只看向前部窗口、曾漏掉更宽的级别值；时间列与级别列都改为预算前**预留**、不参与缩放；用例新增级别 chip 完整性与窄窗口断言 |
 | 1.31 | 2026-09-29 | AI 助手 | 新增反向过滤（REQ-FILTER-09）：`FilterSpec::invertKeyword` + `LogTableModel::entryMatches()` 取反；`FilterPanel` 新增 Invert 勾选框（切换即 emitFilterChanged，Clear 同步取消勾选），`MainWindow::applyFilterSettings()` 传入该标志；§4.8 引擎表 FilterSpec 行更新；新增 UI 用例 `invertedFilterShowsNonMatchingRows` |
+| 1.32 | 2026-09-29 | AI 助手 | 查询与过滤分组框可折叠为单行（REQ-UI-13：输入行容器 + 标题栏右侧 ▾/▸ 按钮）；Settings ▸ Full Screen（REQ-UI-14，F11，Esc 退出）：进入时自动折叠、退出时恢复原折叠状态与最大化状态，F11 勾选态与窗口状态双向同步，关闭窗口时不持久化全屏几何；**全屏切换由 `setWindowState()` 改为 `showFullScreen()`/`showMaximized()`/`showNormal()`**——否则「最大化 → 全屏」在 Windows 上窗口右移约 48 逻辑像素、折叠按钮被裁到屏幕外；`writeLayout()` 增加折叠按钮几何输出；§4.8 引擎表、§6.1/§6.2/§6.3、§7.1、§16.6 同步；新增 2 个 UI 用例（含最大化往返） |
+| 1.33 | 2026-09-29 | AI 助手（缺陷修复） | 修复「目标列最后一行文本超出单元格边框」：① 完整内容模式行高改为**覆盖所有可见列**（`contentHeightForRow()`：消息列作基准 + 其余列 `maxLines+1` 探测，超过基准才完整计算；实测 4664 行 +约 30% 开销），原实现只按消息列导致长目标 + 短消息的行高不足；② `drawClampedText()` 段落裁剪改用 `Qt::IntersectClip`（原 `ReplaceClip` 替换掉单元格裁剪、放行越界绘制）；行高缓存/自愈改为**全列宽快照**（`columnWidthSnapshot()`，`m_heightPassWidths`），任意列宽变化统一失效 + 延迟合并重算；`LOGVIEWER_DUMP_LAYOUT` 改为 dump 完成即退出（报告现在逐行校验行高，固定宽限期会截断大文档输出）；新增 UI 用例 `rowHeightCoversTheTallestColumn`（含像素级越界检查，双向验证：还原旧 clip 或旧行高算法都会失败） |
+| 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 REQ-UI-15：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待；Refresh 更新、关闭文档与 `--demo` 清除、语言切换重译）；新增 `core/DurationFormat`（`formatDuration()`，上下文 `DurationFormat`）与 `tst_duration`，UI 用例覆盖标签位置与清除；§4.8、§6.1、§6.2、§16.2 同步 |
+| 1.35 | 2026-09-29 | AI 助手（性能优化） | 打开大文件性能修复（新增 §16.7）：① `updateVisibleRowHeights()` 不再在视口高度为 0（首次布局前）时遍历整篇文档，只更新可见行；② 新增 `LogTableView::setHeightPassSuspended()`，`setProvider()` / `onDocumentRebuilt()` 期间合并为单次行高 pass；③ `LogSource` 新增 `beginBulkRead()` / `endBulkRead()`，条目索引 / 级别统计不再逐行重开文件（pass 之间不持有句柄，轮转语义不变）。实测 6.9 MB / 38035 行由约 71 s 降至 3.19 s（5.4 MB 为 2.82 s），`ctest` 14/14 通过、`truncatedRows=0` |
+| 1.36 | 2026-09-29 | AI 助手（缺陷修复） | 修复「切换界面语言后日志表格列头仍为旧语言」：`LogTableModel` 不再在 `rebuildColumns()` 时缓存译好的列标题（`Column` 去掉 `title` 字段），`headerData()` 改为按需翻译（extra 列仍用数据键，不翻译）；新增 `LogTableModel::retranslateHeaders()` 并由 `MainWindow::retranslateUi()` 调用，发出 `headerDataChanged` 使表头随语言切换即时刷新（REQ-I18N-02），Columns 菜单文本同步更新；新增 UI 用例 `headersFollowLanguageSwitch`（英文 → 中文 → 英文，含无翻译目录时 SKIP 守卫） |

@@ -44,6 +44,14 @@ public:
     int defaultRowHeight() const;
     /// Height needed to draw the complete content of \a index in \a width pixels.
     int contentRowHeight(const QModelIndex &index, int width) const;
+    /// Text lines \a index needs at \a width pixels, capped by the current mode
+    /// (two line rows, expanded row or full content). Lets the view size a row
+    /// for the tallest of its cells. \a maxLines caps the layout work: with a
+    /// positive value the result never exceeds it, so callers can probe for
+    /// "more than \a maxLines - 1 lines" cheaply.
+    int lineCountForCell(const QModelIndex &index, int width, int maxLines = -1) const;
+    /// Pixel height of a row that draws \a lines text lines (padding included).
+    int rowHeightForLines(int lines) const;
 
     /// VSCode palette used for embedded JSON/XML/YAML snippets.
     void setHighlightTheme(const HighlightTheme *theme);

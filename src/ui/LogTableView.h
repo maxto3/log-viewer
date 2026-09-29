@@ -4,6 +4,7 @@
 #include <QPair>
 #include <QSet>
 #include <QTableView>
+#include <QVector>
 
 class QToolButton;
 class QColor;
@@ -53,6 +54,10 @@ public:
     /// Mirrors the model's column visibility onto the header sections and moves
     /// the stretch to a visible column (REQ-TABLE-11).
     void applyColumnVisibility();
+    /// Suspends the content based height passes while a document is being
+    /// attached (model reset, column visibility, widths, details pane). Resuming
+    /// runs exactly one height pass instead of one per intermediate step.
+    void setHeightPassSuspended(bool suspended);
     /// Sizes the columns from the current content (REQ-TABLE-05 / context menu
     /// "Auto-fit Columns"): the time stamp always keeps its full width, the
     /// flexible column (message, see stretchColumn()) keeps whatever is left and
@@ -122,8 +127,16 @@ private:
     int contentWidthHint(int column) const;
     /// Moves the header's stretch section when the stretch column changed.
     void updateStretchColumn();
-    /// Content height of \a row for the given message column width.
-    int rowHeightFor(int row, int width) const;
+    /// Content height of \a row for the given message column width (cached).
+    /// \a widths is the column width snapshot of the running pass (nullptr =
+    /// take a fresh snapshot): one pass must not mix widths.
+    int rowHeightFor(int row, int width, const QVector<int> *widths = nullptr) const;
+    /// Content height of \a row from scratch: the tallest visible cell decides,
+    /// so a long Target with a short message cannot overflow the row.
+    int contentHeightForRow(int row, const QVector<int> &widths) const;
+    /// Current width of every column (0 = hidden); changes here invalidate the
+    /// cached content heights.
+    QVector<int> columnWidthSnapshot() const;
     int estimatedDefaultRowHeight(int rows) const;
     void invalidateHeightCache();
     int messageColumn() const;
@@ -142,11 +155,12 @@ private:
     bool m_updatingHeights = false;
     bool m_fullContent = false;
     bool m_heightRefreshPending = false;
-    /// A height recompute was requested while a pass was running (it must not be
-    /// dropped, otherwise rows keep heights from a stale column width).
-    bool m_heightRefreshNeeded = false;
-    /// Message column width used by the last height pass (-1 = none yet).
-    int m_heightPassWidth = -1;
+    /// Greater than 0 while a bulk document change suspends the height passes.
+    int m_heightPassSuspends = 0;
+    /// Visible column widths used by the last height pass (empty = none yet).
+    /// Any column can change the content height, so the deferred self check
+    /// compares the whole snapshot, not only the message column.
+    QVector<int> m_heightPassWidths;
     /// Section with QHeaderView::Stretch (message column, or the last visible
     /// column when the message column is hidden).
     int m_stretchColumn = -1;

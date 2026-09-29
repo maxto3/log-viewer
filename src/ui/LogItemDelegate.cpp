@@ -109,25 +109,51 @@ int LogItemDelegate::lineCountForRow(int row) const
 
 int LogItemDelegate::defaultRowHeight() const
 {
+    return rowHeightForLines(m_rowHeightLines);
+}
+
+int LogItemDelegate::lineCountForCell(const QModelIndex &index, int width, int maxLines) const
+{
+    const QString text = index.data(LogTableModel::FullTextRole).toString();
+    if (text.isEmpty())
+        return 1;
+
+    const int modeLimit = lineCountForRow(index.row());
+    const int limit = maxLines > 0 ? qMin(maxLines, modeLimit) : modeLimit;
+
+    const QFont f = cellFont();
+    const int usableWidth = qMax(40, width - kHPadding * 2);
+
+    // Fast path: a single paragraph whose text fits the cell needs no layout.
+    // Most cells (Line, Time, Level, Thread, …) take this branch, so sizing a
+    // row for every visible column stays cheap.
+    if (!text.contains(QLatin1Char('\n'))) {
+        const QFontMetrics metrics(f);
+        if (metrics.horizontalAdvance(text) <= usableWidth)
+            return 1;
+    }
+
+    return qMax(1, visibleLineCount(text, usableWidth, f, limit));
+}
+
+int LogItemDelegate::rowHeightForLines(int lines) const
+{
     const QFontMetrics metrics(cellFont());
-    return metrics.lineSpacing() * m_rowHeightLines + kVPadding * 2 + 2;
+    return metrics.lineSpacing() * qMax(1, lines) + kVPadding * 2 + 2;
 }
 
 int LogItemDelegate::contentRowHeight(const QModelIndex &index, int width) const
 {
-    const QString text = index.data(LogTableModel::FullTextRole).toString();
-    const QFont f = cellFont();
-    const int usableWidth = qMax(40, width - kHPadding * 2);
-    const int lines = qMax(1, visibleLineCount(text, usableWidth, f, lineCountForRow(index.row())));
-    const QFontMetrics metrics(f);
-    return metrics.lineSpacing() * lines + kVPadding * 2 + 2;
+    return rowHeightForLines(lineCountForCell(index, width));
 }
 
 void LogItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                             const QModelIndex &index) const
 {
     painter->save();
-    painter->setClipRect(option.rect);
+    // Intersect (never replace) the paint region: the view may have set a clip
+    // for the dirty area, and a cell must never draw past its own rectangle.
+    painter->setClipRect(option.rect, Qt::IntersectClip);
 
     const bool selected = option.state & QStyle::State_Selected;
     // Zebra striping (REQ-TABLE-09): alternate rows use the palette's alternate
@@ -339,8 +365,13 @@ void LogItemDelegate::drawClampedText(QPainter *painter, const QRect &rect, cons
             buildFormats(formats, paragraph, paragraphStart);
 
         painter->save();
+        // IntersectClip: the paragraph clip may be taller than the cell when the
+        // row is shorter than this column needs. ReplaceClip (the default) would
+        // override the cell rectangle set by paint() and let the text spill over
+        // the row separator.
         painter->setClipRect(QRectF(rect.left(), y, rect.width(),
-                                    metrics.lineSpacing() * lines.size() + 1));
+                                    metrics.lineSpacing() * lines.size() + 1),
+                             Qt::IntersectClip);
         layout.draw(painter, QPointF(rect.left(), y), ranges);
         painter->restore();
 

@@ -4,6 +4,7 @@
 #include "core/LineIndex.h"
 
 #include <QDate>
+#include <QFile>
 #include <QHash>
 
 #include <memory>
@@ -57,6 +58,13 @@ public:
     /// Drops the cached level histogram (used after a document rebuild).
     void invalidateLevelCounts();
 
+    /// Keeps the file open for a multi line pass so it does not have to be
+    /// reopened for every line (that dominated the open time of large files).
+    /// \c endBulkRead() releases the handle again: between passes no handle is
+    /// held, so log rotation (rename/replace) keeps working on Windows.
+    void beginBulkRead() const;
+    void endBulkRead() const;
+
 private:
     LogSource() = default;
 
@@ -92,6 +100,9 @@ private:
     mutable QVector<int> m_levelCounts;
     mutable bool m_countsComputed = false;
     mutable bool m_decodingFallbackUsed = false;
+    /// Handle used only inside a beginBulkRead()/endBulkRead() pass.
+    mutable std::unique_ptr<QFile> m_bulkFile;
+    mutable bool m_bulkOpen = false;
 
     static constexpr int kMaxCachedEntries = 20'000;
     static constexpr int kMaxCountScanLines = 300'000;

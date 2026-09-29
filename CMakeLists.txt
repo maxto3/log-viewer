@@ -13,6 +13,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(LOGVIEWER_BUILD_TESTS "Build unit tests" ON)
 option(LOGVIEWER_BUILD_BENCH "Build 1M-line performance benchmark" OFF)
 
+# The Windows application icon is compiled into the executable from a .rc file
+# (see src/CMakeLists.txt); other platforms do not use the RC language.
+if(WIN32)
+    enable_language(RC)
+endif()
+
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets LinguistTools)
 
 qt_standard_project_setup()

@@ -406,6 +406,21 @@ int LogTableView::messageColumnWidth() const
     return message >= 0 ? columnWidth(message) : viewport()->width();
 }
 
+QVector<int> LogTableView::columnWidthSnapshot() const
+{
+    // Widths that determine the content heights: one entry per column, hidden
+    // columns use 0 so toggling the visibility also invalidates a snapshot.
+    LogTableModel *model = logModel();
+    QVector<int> widths;
+    if (!model)
+        return widths;
+    widths.reserve(model->columnCount());
+    for (int column = 0; column < model->columnCount(); ++column) {
+        widths.append(model->isColumnHidden(column) ? 0 : columnWidth(column));
+    }
+    return widths;
+}
+
 bool LogTableView::messageColumnVisible() const
 {
     LogTableModel *model = logModel();
@@ -429,14 +444,14 @@ void LogTableView::scheduleHeightRefresh()
             return;
         if (!messageColumnVisible())
             return;               // heights do not depend on content any more
-        if (messageColumnWidth() == m_heightPassWidth)
-            return;
+        if (columnWidthSnapshot() == m_heightPassWidths)
+            return;               // the pass already used these widths
         invalidateHeightCache();
         applyRowHeights();
     });
 }
 
-int LogTableView::rowHeightFor(int row, int width) const
+int LogTableView::rowHeightFor(int row, int width, const QVector<int> *widths) const
 {
     LogTableModel *model = logModel();
     if (!model || row < 0 || row >= model->rowCount())
@@ -448,11 +463,44 @@ int LogTableView::rowHeightFor(int row, int width) const
     if (cached != m_heightCache.constEnd())
         return *cached;
 
-    const int message = messageColumn();
-    const QModelIndex index = model->index(row, qMax(0, message));
-    const int height = m_delegate->contentRowHeight(index, width);
+    const int height = contentHeightForRow(row, widths ? *widths : columnWidthSnapshot());
     m_heightCache.insert(key, height);
     return height;
+}
+
+int LogTableView::contentHeightForRow(int row, const QVector<int> &widths) const
+{
+    LogTableModel *model = logModel();
+    if (!model || row < 0 || row >= model->rowCount())
+        return m_delegate->defaultRowHeight();
+
+    const auto widthOf = [&](int column) {
+        return column < widths.size() ? widths.at(column) : columnWidth(column);
+    };
+
+    // The message column used to be the only reference, but any visible column
+    // can wrap into more lines (a long Target with a short message, for
+    // example). The row has to fit its tallest cell (REQ-TABLE-04), so every
+    // visible column participates. To keep that affordable the message column
+    // (usually the tallest cell) is measured first and the others are only
+    // probed for "more lines than the current maximum": the probe stops the
+    // text layout at maxLines + 1 lines, a full measurement only happens for
+    // columns that really exceed the baseline.
+    const int message = messageColumn();
+    int lines = 1;
+    if (message >= 0 && !model->isColumnHidden(message)) {
+        lines = m_delegate->lineCountForCell(model->index(row, message), widthOf(message));
+    }
+
+    for (int column = 0; column < model->columnCount(); ++column) {
+        if (column == message || model->isColumnHidden(column))
+            continue;
+        const QModelIndex index = model->index(row, column);
+        const int width = widthOf(column);
+        if (m_delegate->lineCountForCell(index, width, lines + 1) > lines)
+            lines = m_delegate->lineCountForCell(index, width);
+    }
+    return m_delegate->rowHeightForLines(lines);
 }
 
 int LogTableView::freshContentHeight(int row) const
@@ -460,9 +508,7 @@ int LogTableView::freshContentHeight(int row) const
     LogTableModel *model = logModel();
     if (!model || row < 0 || row >= model->rowCount())
         return 0;
-    const int message = messageColumn();
-    const int width = message >= 0 ? columnWidth(message) : viewport()->width();
-    return m_delegate->contentRowHeight(model->index(row, qMax(0, message)), width);
+    return contentHeightForRow(row, columnWidthSnapshot());
 }
 
 int LogTableView::estimatedDefaultRowHeight(int rows) const
@@ -485,7 +531,7 @@ int LogTableView::estimatedDefaultRowHeight(int rows) const
 
 void LogTableView::applyRowHeights()
 {
-    if (m_updatingHeights)
+    if (m_updatingHeights || m_heightPassSuspends > 0)
         return;
     m_updatingHeights = true;
 
@@ -504,6 +550,9 @@ void LogTableView::applyRowHeights()
 
     // One width snapshot for the whole pass: mixing widths would leave rows with
     // inconsistent heights (regression: rows truncated after the first open).
+    // The snapshot is recorded at the *start*: a column resized mid-pass makes
+    // the deferred self check see the difference and run the pass again.
+    const QVector<int> passWidths = columnWidthSnapshot();
     const int passWidth = messageColumnWidth();
 
     if (m_fullContent && rows > 0 && messageColumnVisible()) {
@@ -511,7 +560,7 @@ void LogTableView::applyRowHeights()
             QApplication::setOverrideCursor(Qt::WaitCursor);
             viewport()->setUpdatesEnabled(false);
             for (int row = 0; row < rows; ++row) {
-                const int height = rowHeightFor(row, passWidth);
+                const int height = rowHeightFor(row, passWidth, &passWidths);
                 setRowHeight(row, height);
                 if (height != defaultHeight)
                     m_appliedHeights.insert(row, height);
@@ -527,14 +576,31 @@ void LogTableView::applyRowHeights()
     }
 
     m_updatingHeights = false;
-    m_heightPassWidth = passWidth;
+    m_heightPassWidths = passWidths;
     updateVisibleRowHeights();
     scheduleHeightRefresh();
 }
 
+void LogTableView::setHeightPassSuspended(bool suspended)
+{
+    if (suspended) {
+        ++m_heightPassSuspends;
+        return;
+    }
+    if (m_heightPassSuspends == 0)
+        return;
+    if (--m_heightPassSuspends > 0)
+        return;
+
+    // The bulk change is done: bring the rows in sync with a single pass.
+    applyRowHeights();
+    updateVisibleRowHeights();
+    viewport()->update();
+}
+
 void LogTableView::updateVisibleRowHeights()
 {
-    if (m_updatingHeights)
+    if (m_updatingHeights || m_heightPassSuspends > 0)
         return;
     m_updatingHeights = true;
 
@@ -544,19 +610,33 @@ void LogTableView::updateVisibleRowHeights()
     const int messageWidth = message >= 0 ? columnWidth(message) : viewport()->width();
     const bool messageVisible = messageColumnVisible();
 
+    // Only the rows the viewport can show are updated. A viewport height of 0
+    // means the widget has not been laid out yet (a file opened from the command
+    // line before the first layout pass): nothing is visible, so walking the
+    // whole document here - as the previous "last row" fallback did - cost a
+    // full height pass per column resize signal. applyRowHeights() and the first
+    // resize/scroll bring the heights in afterwards.
+    const int viewportHeight = viewport()->height();
     int first = rowAt(0);
     if (first < 0)
         first = 0;
-    int last = rowAt(viewport()->height() - 1);
-    if (last < 0)
-        last = model ? model->rowCount() - 1 : -1;
+    int last = viewportHeight > 0 ? rowAt(viewportHeight - 1) : -1;
+    if (last < 0) {
+        if (viewportHeight <= 0) {
+            m_updatingHeights = false;
+            return;
+        }
+        // The section positions are not resolved yet; refreshing the first
+        // visible row is enough, the next scroll/resize retries the rest.
+        last = first;
+    }
 
     for (int row = first; row <= last && row >= 0 && model && row < model->rowCount(); ++row) {
         int height = defaultHeight;
         if (messageVisible && m_fullContent) {
             height = rowHeightFor(row, messageWidth);
         } else if (messageVisible && isRowExpanded(row)) {
-            height = m_delegate->contentRowHeight(model->index(row, qMax(0, message)), messageWidth);
+            height = contentHeightForRow(row, columnWidthSnapshot());
         }
         if (rowHeight(row) != height) {
             setRowHeight(row, height);
@@ -571,27 +651,37 @@ void LogTableView::updateVisibleRowHeights()
 
 void LogTableView::onSectionResized(int logicalIndex, int oldSize, int newSize)
 {
+    Q_UNUSED(logicalIndex);
     Q_UNUSED(oldSize);
     Q_UNUSED(newSize);
-    if (logicalIndex != messageColumn())
-        return;
+
+    // Every visible column contributes to the content height (the tallest cell
+    // wins), so a resize of any column invalidates the cached heights. The
+    // refresh is deferred: a batch column resize (auto-fit, restoring saved
+    // widths) triggers one signal per column and must not run one height pass
+    // per column.
+    if (!m_fullContent && m_expandedRows.isEmpty())
+        return;                     // two line rows: heights do not depend on content
+    if (!messageColumnVisible())
+        return;                     // heights do not depend on content any more
 
     invalidateHeightCache();
 
-    // A resize while a height pass is running must not be dropped: remember it and
-    // let the pass (or the deferred check) redo the work with the final width.
-    if (m_updatingHeights) {
-        m_heightRefreshNeeded = true;
-        scheduleHeightRefresh();
+    LogTableModel *model = logModel();
+    const int rows = model ? model->rowCount() : 0;
+    if (m_fullContent && rows > kLiveResizeRowLimit) {
+        // Large document: keep the visible rows in sync while the user drags,
+        // the rest refines itself on scrolling (a full pass per resize step
+        // would stall the drag).
+        if (!m_updatingHeights)
+            updateVisibleRowHeights();
         return;
     }
 
-    LogTableModel *model = logModel();
-    const int rows = model ? model->rowCount() : 0;
-    if (m_fullContent && rows > 0 && rows <= kLiveResizeRowLimit)
-        applyRowHeights();
-    else
-        updateVisibleRowHeights();
+    // Small document or expanded rows: one deferred exact pass. Deferring also
+    // merges the signal burst of a batch column resize (auto-fit, restoring
+    // saved widths) into a single pass.
+    scheduleHeightRefresh();
 }
 
 void LogTableView::scrollContentsBy(int dx, int dy)

@@ -17,3 +17,6 @@ development-time screenshot archive is not versioned).
 | `30-autofit-level-fit-preview.png` | Column auto-fit: complete timestamps, complete level chips, message column takes the rest |
 | `32-filter-invert.png` | Inverted keyword filter (Invert box): only rows without a match stay visible |
 | `32-overview.png` | Whole window with the default layout (details pane on the right) |
+| `33-panel-collapsed-preview.png` | Full screen (`F11`): the search & filter panel is collapsed to its title row, the table uses the whole window |
+| `34-collapse-toggle-zoom.png` | Zoom on the collapse toggle in the title row (`▸` = collapsed, click to expand) |
+| `35-target-column-wrapping.png` | Row height covers every column: a two line Target stays inside its cell (the message needs a single line only) |

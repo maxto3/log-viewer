@@ -5,6 +5,7 @@
 #include "platform/EncodingBackend.h"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QFileInfo>
 #include <QStringConverter>
 
@@ -12,6 +13,24 @@ namespace lv {
 namespace {
 constexpr int kProbeLineCount = 200;
 constexpr int kEncodingProbeBytes = 4096;
+
+/// RAII helper for bulk passes: keeps the file open for the whole pass and
+/// closes it afterwards, so a long lived handle can never block log rotation.
+class BulkReadScope
+{
+public:
+    explicit BulkReadScope(const LogSource *source)
+        : m_source(source)
+    {
+        m_source->beginBulkRead();
+    }
+    ~BulkReadScope() { m_source->endBulkRead(); }
+    BulkReadScope(const BulkReadScope &) = delete;
+    BulkReadScope &operator=(const BulkReadScope &) = delete;
+
+private:
+    const LogSource *m_source;
+};
 } // namespace
 
 std::shared_ptr<LogSource> LogSource::open(const QString &path, const QString &forcedFormatId,
@@ -45,12 +64,16 @@ std::shared_ptr<LogSource> LogSource::open(const QString &path, const QString &f
     source->m_modifiedDate = info.lastModified().date();
     source->detectEncoding();
 
-    // Probe the head of the file to pick a format.
+    // Probe the head of the file to pick a format. The probe keeps the file open
+    // for the whole sample: one open per line is needlessly slow (see
+    // beginBulkRead()).
     QStringList sample;
     const int sampleCount = qMin(kProbeLineCount, source->m_index->lineCount());
     sample.reserve(sampleCount);
+    source->beginBulkRead();
     for (int row = 0; row < sampleCount; ++row)
         sample.append(source->readLine(row));
+    source->endBulkRead();
 
     const LogFormatRegistry &registry = LogFormatRegistry::instance();
     if (!forcedFormatId.isEmpty() && forcedFormatId != QLatin1String("auto")) {
@@ -80,6 +103,11 @@ void LogSource::buildEntryIndex(int fromPhysicalLine, int maxLines)
 {
     if (!m_index)
         return;
+
+    // Every physical line of the range is read at least once; keep the file open
+    // for that (one open per line dominated the open time of large files) and
+    // release it when the pass is done (see beginBulkRead()).
+    BulkReadScope bulk(this);
 
     // Structured documents (the event log XML export) are parsed as a whole
     // because one entry is not necessarily a range of lines.
@@ -132,14 +160,40 @@ QByteArray LogSource::readRawLine(int row) const
     if (length <= 0)
         return {};
 
-    // The file is opened per read on purpose: holding a handle open for the whole
+    // During a bulk pass the file stays open for the whole pass; outside of one
+    // the file is opened per read on purpose: holding a handle open for the whole
     // session would prevent log rotation (rename/replace) on Windows.
+    if (m_bulkOpen) {
+        if (!m_bulkFile->seek(start))
+            return {};
+        return m_bulkFile->read(length);
+    }
+
     QFile file(m_path);
     if (!file.open(QIODevice::ReadOnly))
         return {};
     if (!file.seek(start))
         return {};
     return file.read(length);
+}
+
+void LogSource::beginBulkRead() const
+{
+    if (m_bulkOpen)
+        return;
+    if (!m_bulkFile)
+        m_bulkFile = std::make_unique<QFile>(m_path);
+    else
+        m_bulkFile->setFileName(m_path);
+    m_bulkOpen = m_bulkFile->open(QIODevice::ReadOnly);
+}
+
+void LogSource::endBulkRead() const
+{
+    if (!m_bulkOpen)
+        return;
+    m_bulkFile->close();
+    m_bulkOpen = false;
 }
 
 QString LogSource::readLine(int row, bool *ok) const
@@ -290,6 +344,7 @@ QVector<int> LogSource::levelCounts() const
         return {};
 
     m_levelCounts = QVector<int>(kLogLevelCount, 0);
+    BulkReadScope bulk(this);
     for (int row = 0; row < rows; ++row) {
         const LogEntry &entry = entryAt(row);
         m_levelCounts[logLevelIndex(entry.level)] += 1;

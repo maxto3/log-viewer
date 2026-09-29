@@ -22,6 +22,8 @@ Studio Code colour scheme, and can follow a file live like `tail -f`.
 | Encodings | UTF-8 (with or without BOM), UTF-16, and legacy encodings auto-detected (GB18030/GBK, Big5, Shift_JIS, CP1252) and shown as UTF-8 |
 | Languages | Complete English and Simplified Chinese user interface, switchable at runtime |
 | Themes | Light, Dark or follow the system; separate syntax highlighting theme setting |
+| View | Collapse the search & filter panel to its title row to give the table more room; full screen (`F11`, leave with `Esc`) automatically collapses that panel |
+| Status bar | The bottom left corner shows how long the last file open took (`Loaded in 0.35 s`; the value adapts to seconds / minutes / hours); the right side shows the file name, format, encoding, line count and monitoring state |
 
 ## Requirements
 
@@ -50,8 +52,8 @@ cd log-viewer
 # 4) tests
 .\scripts\test.ps1
 
-# 5) portable folder (executable + Qt runtime + translations)
-.\scripts\package.ps1 -Config Release                    # -> dist\log-viewer\
+# 5) portable package (executable + Qt runtime + translations, one zip)
+.\scripts\package.ps1 -Config Release                    # -> dist\log-viewer-<version>-win64.zip
 
 # 6) optional: associate .log files with Log Viewer (current user only, reversible)
 .\scripts\register-association.ps1
@@ -59,8 +61,12 @@ cd log-viewer
 ```
 
 The build output lives in `build\windows-msvc-qt6-release\bin\log-viewer.exe`.
-That folder is already self contained (`windeployqt` ran) — `dist\log-viewer\`
-from `package.ps1` is the cleaned-up version to distribute.
+That folder is already self contained (`windeployqt` ran) — `package.ps1` deploys
+the Qt runtime into a staging folder and compresses it with the executable, the
+plugins, the translations and the documentation into a single
+`dist\log-viewer-<version>-win64.zip`. `dist\` holds only that archive; it
+extracts to a top-level `log-viewer-<version>\` folder. The version comes from
+`CMakeLists.txt`.
 
 Manual build (any shell with CMake and Ninja on `PATH`):
 
@@ -73,7 +79,7 @@ ctest --preset windows-msvc-qt6-release --output-on-failure
 ## Build and run (Linux)
 
 > **Not verified yet.** The Linux code path is written to be portable but has not
-> been built on this development machine (see spec.md REQ-PLAT-10). The steps
+> been built on this development machine (see docs/spec.md REQ-PLAT-10). The steps
 > below are the intended ones.
 
 ```bash
@@ -120,6 +126,9 @@ Exit codes: `0` success, `1` file error, `2` usage error.
 | `Ctrl+O` / `F5` / `Ctrl+W` / `Ctrl+Q` | Open / refresh / close / quit |
 | `Ctrl+M` | Toggle live monitoring |
 | `Ctrl+E` | Export the filtered rows (CSV or text) |
+| `F11` | Toggle full screen (*Settings ▸ Full Screen*); entering full screen collapses the search & filter panel |
+| `Esc` | Leave full screen (the search & filter panel returns to its previous state) |
+| `▾` / `▸` in the "Search & Filter" title | Collapse / expand the search & filter panel (only the input rows are hidden; active conditions keep working) |
 | `Ctrl` + wheel | Temporary font zoom |
 | Drop log files onto the window | Open them (same-format files are merged); folders are ignored |
 | Right click | Copy cell / row / message, auto-fit columns |
@@ -136,6 +145,8 @@ Exit codes: `0` success, `1` file error, `2` usage error.
     submenu selects the pane position (right or bottom)
   * **Appearance** — theme (light/dark/follow system), syntax highlighting theme
     (follow theme / VSCode Dark+ / Light+), highlight colour, reset all settings
+  * **Full Screen** — checkable, `F11`: collapses the search & filter panel and
+    shows the window full screen; `Esc` leaves full screen and restores the panel
 * **Columns** — top level menu between Settings and About: one checkable item per
   column of the loaded document (unchecking hides that column, the choice is
   remembered per document); the Line column is always shown; *Show All Columns*
@@ -156,8 +167,8 @@ the defaults.
 
 ## Documentation
 
-* `spec.md` — requirement specification (the single source of truth, Chinese)
-* `design-doc.md` — technical design and implementation record (Chinese)
+* `docs/spec.md` — requirement specification (the single source of truth, Chinese)
+* `docs/design-doc.md` — technical design and implementation record (Chinese)
 * `screenshots/` — curated UI evidence (index: `screenshots/README.md`)
 
 ## Project layout
@@ -168,7 +179,7 @@ src/core/       line index, entry providers, parsers, model, matcher, watcher
 src/highlight/  VSCode palettes, JSON/XML/YAML tokenizer, message highlighter
 src/platform/   platform specific code (encodings, fonts, paths)
 src/ui/         main window, filter panel, table view, details pane, dialogs
-tests/          Qt Test suites (13 targets) and the frozen log fixture (tests/data/)
+tests/          Qt Test suites (14 targets) and the frozen log fixture (tests/data/)
 test-data/      local sample logs for manual testing (git-ignored, not versioned)
 scripts/        build, test, run, package and file-association scripts
 packaging/      Linux desktop entry, AppStream metadata, icon, CPack DEB

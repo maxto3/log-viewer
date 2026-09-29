@@ -5,6 +5,7 @@
 #include "ui/MainWindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QStyleFactory>
 #include <QTimer>
 
@@ -15,6 +16,18 @@
 #endif
 
 namespace {
+
+/// Window icon: the same artwork as the Linux desktop icon, rasterised at the
+/// sizes the window managers request and shipped in the Qt resource file
+/// (see resources/resources.qrc).
+QIcon applicationIcon()
+{
+    static constexpr int sizeSteps[] = {16, 24, 32, 48, 64, 128, 256};
+    QIcon icon;
+    for (const int size : sizeSteps)
+        icon.addFile(QStringLiteral(":/icons/log-viewer-%1.png").arg(size));
+    return icon;
+}
 
 /// Windows GUI applications are not attached to a console; --help/--version
 /// still need to print when the program is started from a terminal (REQ-CLI-05).
@@ -53,6 +66,7 @@ int main(int argc, char *argv[])
     QApplication application(argc, argv);
     QApplication::setApplicationName(QStringLiteral("LogViewer"));
     QApplication::setApplicationVersion(QStringLiteral("1.2.0"));
+    QApplication::setWindowIcon(applicationIcon());
     if (QStyle *fusion = QStyleFactory::create(QStringLiteral("Fusion")))
         QApplication::setStyle(fusion);
 
@@ -100,8 +114,12 @@ int main(int argc, char *argv[])
         int delay = 1200;
         if (const QByteArray requested = qgetenv("LOGVIEWER_DUMP_LAYOUT_DELAY"); !requested.isEmpty())
             delay = requested.toInt();
-        QTimer::singleShot(delay, &window, [&window, path] { window.dumpLayout(path); });
-        QTimer::singleShot(delay + 1000, &application, [] { QApplication::quit(); });
+        // Dump and quit in one step: the report walks every row (content height
+        // checks), so a fixed grace period would truncate it on large documents.
+        QTimer::singleShot(delay, &window, [&window, path] {
+            window.dumpLayout(path);
+            QApplication::quit();
+        });
     }
 
     return QApplication::exec();

@@ -208,11 +208,14 @@
 | REQ-UI-04 | **Settings ▸ Details Pane ▸ Layout** 子菜单（Layout 挂在 Details Pane 之下，因为它只影响详情框）：Details pane 位置 = Right / Bottom；详情框关闭时该子菜单置灰 | 必须 |
 | REQ-UI-11 | **Settings ▸ Details Pane** 为一个可勾选项 **Show Details Pane**（默认关闭）：☑ 勾选时详情框**始终显示**——打开日志自动选中第一条并展开，点击行仅更新内容，面板不自动隐藏；☐ 取消勾选时详情框**始终不显示**——点击某一行也不会展开，同时**表格进入完整内容模式**（行高按内容自适应、不截断，因为此时表格是唯一的阅读位置）。开启时「Layout ▸ Details: Right/Bottom」可用，关闭时置灰。**详情框只能由该勾选项或「用户显式点击/键盘导航选中某行（仅在勾选时）」触发**：模型重置、刷新、重新打开文件、过滤等程序化选中一律不得自动弹出详情框 | 必须 |
 | REQ-UI-12 | **顶级菜单 Columns**（位于 Settings 与 About 之间，结构见 design-doc §6.3）：菜单项**按当前文档的列动态生成**（文本 = 列名，含 extra 列，随文档切换重建；无文档时整个菜单置灰为空）；每项为勾选项：☑ 显示该列、☐ 隐藏该列；Line 列常显（REQ-PARSE-03），其项禁用并悬停提示；另提供 **Show All Columns**（仅当存在隐藏列时可用） | 必须 |
+| REQ-UI-13 | 查询与过滤分组框**可折叠为单行**（标题行右侧 `▾`/`▸` 切换按钮）：折叠时只保留分组框标题（约一行高度）、隐藏全部输入行，日志表格获得释放的纵向空间；折叠仅改变可见性——**已生效的 Find / Filter / 级别 / 时间条件继续生效**，输入内容与光标焦点语义不丢失；折叠状态**不跨会话记忆**（重启/重新打开日志后默认展开） | 必须 |
+| REQ-UI-14 | **Settings ▸ Full Screen**（勾选项，快捷键 `F11`）：触发时**自动折叠查询与过滤分组框**并把主窗口切换为全屏；全屏期间用户可手动展开/折叠该分组框；按 `Esc` **退出全屏**（`Esc` 仅在全屏期间被该功能占用，其余场景不受影响），退出时恢复进入全屏前的折叠状态与窗口状态（此前最大化则回到最大化）；全屏状态**不持久化** | 必须 |
+| REQ-UI-15 | 状态栏**左下角**（最左侧的普通指示区）在日志文件打开完成后显示本次打开**花费的时间**，文本形如 `Loaded in 0.35 s`（中文「加载耗时 0.35 s」）；时长**自适应格式**：不足 1 分钟显示秒并保留小数（`0.35 s`、`12.3 s`），1 分钟～1 小时显示 `2 min 5 s`，1 小时及以上显示 `1 h 2 min 5 s`，为 0 的高位分量省略（如 `1 h 5 s`）；计时从打开操作开始到文档就绪，**不包含**「大文件是否继续加载」对话框的等待时长；Refresh 重新打开后更新；关闭文档或载入 `--demo` 演示数据时清除；语言切换后标签随界面重译 | 必须 |
 | REQ-UI-05 | **Settings ▸ Appearance** 子菜单：Theme = Light / Dark / Follow system（默认 Light）；Syntax highlighting = Follow theme / VSCode Dark+ / VSCode Light+；Highlight color（Find/Filter 高亮底色与文字色） | 必须 |
 | REQ-UI-06 | **顶级菜单 About**（与 File、Settings 平级，点击直接打开关于对话框）：产品名、版本号、构建信息（Qt 版本、编译器、构建时间、**目标平台**）、许可证说明、开源组件致谢 | 必须 |
 | REQ-UI-07 | 查询与过滤功能集中在一个主界面**分组框**中，位于日志表格分组框**上方** | 必须 |
 | REQ-UI-08 | 所有设置持久化（路径见 CON-11，QSettings INI 格式）；提供"Reset all settings"入口 | 必须 |
-| REQ-UI-09 | 状态栏展示：文件名（合并时显示数量）、编码、格式名、总行数/显示行数、Monitor 状态、最近一次操作反馈（如复制提示） | 应该 |
+| REQ-UI-09 | 状态栏展示：文件名（合并时显示数量）、编码、格式名、总行数/显示行数、Monitor 状态、最近一次操作反馈（如复制提示）；左下角的打开耗时显示见 REQ-UI-15 | 应该 |
 | REQ-UI-10 | 界面在暗色/亮色系统主题、不同 DPI 缩放（100%/125%/150%/200%）下均正常（REQ-PLAT-07） | 必须 |
 
 ### REQ-CLIP 剪贴板与单元格交互
@@ -345,6 +348,7 @@
 | AC-16 | 源码在 Linux（Debian 13 / GCC 14 / Qt 6.8.2）下 `cmake` 配置与编译一次通过 | 命令行验证 | **否（本机不验证；由用户在 Debian 原生环境验证）** |
 | AC-17 | `cpack -G DEB` 产出 `.deb`，安装后 `log-viewer`、`.desktop`、MIME、AppStream、翻译文件就位 | 命令行验证 | **否（本机不验证；由用户在 Debian 原生环境验证）** |
 | AC-18 | CPack 配置与 `packaging/linux/` 资源文件存在且语法正确（`cmake --install --dry-run` 级别的静态检查） | 静态检查 | 是（静态） |
+| AC-19 | 打开日志文件后状态栏左下角显示 `Loaded in …`，时长随量级自适应（秒 / 分+秒 / 时+分+秒）；关闭文档后清除 | 单元测试（格式化）+ UI 用例 | 是 |
 
 ## 9. 开放问题与建议项
 
@@ -399,3 +403,6 @@
 | 1.29 | 2026-09-29 | AI 助手（依据用户反馈） | 级别列也需完整显示：① 覆盖 `LogTableView::sizeHintForColumn()`，内容宽度改为**整篇文档采样**（新增 `contentWidthHint()`：前 500 行连续 + 其后均匀抽样至 3500 行）——Qt 自带实现只看向前部窗口，曾把级别列按 INFO 拟合（64 px）而裁掉 DEBUG 的 chip；② 级别列与时间列一样在预算前**预留**、不参与比例缩放（窄窗口下 chip 不再被压缩）；实测 `sslocal`：级别列 64 → 66 px（= DEBUG/ERROR 完整宽度），时间/消息列不受影响；REQ-TABLE-05 同步更新；用例新增级别 chip 完整性与宽度上界断言 |
 | 1.30 | 2026-09-29 | AI 助手（依据用户反馈） | 新增**反向过滤**（REQ-FILTER-09）：Filter 行新增 **Invert** 勾选框，勾选后只显示不包含过滤关键词/模式的行（可与级别、时间条件 AND 叠加），切换立即生效，输入为空时不隐藏任何行，Clear 同时取消勾选；`FilterSpec` 新增 `invertKeyword`，模型在 `entryMatches()` 中统一取反；新增 UI 用例 invertedFilterShowsNonMatchingRows |
 | 1.31 | 2026-09-29 | AI 助手（依据用户指示） | 测试用样本日志移动到新目录 **`test-data/`**（`sslocal.2026-09-27.log`、`sslocal.2026-09-28.log`、`test-event-logs.txt`、`test-event-logs.xml`）并加入 `.gitignore`（不入库）；`tests/CMakeLists.txt` 的 `LOGVIEWER_SAMPLE_LOG` 指向新路径（仍以 EXISTS 守卫，缺失时相关用例自动跳过）；冻结样本 `tests/data/tracing-sample.log` 保留在版本库中；README / run.ps1 示例路径同步更新 |
+| 1.32 | 2026-09-29 | AI 助手（依据用户反馈） | 查询与过滤分组框新增**折叠为单行**（REQ-UI-13）：标题栏右侧 ▾/▸ 按钮，折叠只隐藏输入行、已生效条件继续生效、不跨会话记忆；Settings 菜单新增 **Full Screen**（REQ-UI-14，F11）：自动折叠查询过滤分组框并全屏，`Esc` 退出全屏并恢复进入前的折叠状态；新增 UI 用例 `filterPanelCollapsesToSingleRow`、`fullScreenCollapsesFilterPanel` |
+| 1.33 | 2026-09-29 | AI 助手（缺陷修复） | 修复「目标列最后一行文本超出单元格边框」：① **完整内容模式的行高原先只按消息列计算**，当其他列（如目标列）需要更多行时行高不足——现改为**覆盖所有可见列**（最高单元格决定；消息列作基准，其余列以 `maxLines+1` 探测，仅超过基准的列完整计算，控制性能开销）；② `LogItemDelegate::drawClampedText()` 的段落裁剪默认 `ReplaceClip`，替换掉单元格裁剪后放行了越界绘制——改用 `Qt::IntersectClip`（REQ-TABLE-04 的"不截断"以不越界为前提）；任意列宽变化都会失效行高缓存并合并为一次延迟重算；新增 UI 用例 `rowHeightCoversTheTallestColumn`（含像素级越界检查） |
+| 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 **REQ-UI-15**：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待时间；Refresh 更新、关闭文档或 `--demo` 清除、随语言切换重译）；新增 `core/DurationFormat` 与 `tst_duration`，UI 用例覆盖标签位置与清除；REQ-UI-09 与 AC-19 同步 |

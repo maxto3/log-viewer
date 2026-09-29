@@ -8,9 +8,11 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSet>
 #include <QSignalBlocker>
 #include <QToolButton>
+#include <QVBoxLayout>
 
 namespace lv {
 namespace {
@@ -28,7 +30,27 @@ FilterPanel::FilterPanel(QWidget *parent)
 
 void FilterPanel::buildLayout()
 {
-    auto *grid = new QGridLayout(this);
+    // All input rows live in a container so collapsing the panel is a single
+    // setVisible() call (REQ-UI-13). The collapse toggle stays outside of it:
+    // it sits in the title row and must remain reachable while collapsed.
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+
+    m_content = new QWidget(this);
+    outer->addWidget(m_content);
+
+    m_collapseButton = new QToolButton(this);
+    m_collapseButton->setObjectName(QStringLiteral("filterCollapseButton"));
+    m_collapseButton->setAutoRaise(true);
+    // Same height as the title row (style sheet margin-top): the arrow has to
+    // sit next to the title text, not on the group box frame.
+    m_collapseButton->setFixedSize(20, 12);
+    connect(m_collapseButton, &QToolButton::clicked, this, [this] {
+        setCollapsed(!m_collapsed);
+    });
+
+    auto *grid = new QGridLayout(m_content);
     grid->setContentsMargins(10, 14, 10, 10);
     grid->setHorizontalSpacing(10);
     grid->setVerticalSpacing(6);
@@ -210,6 +232,45 @@ void FilterPanel::buildLayout()
             applyTimePreset(button->property("presetMinutes").toInt());
         });
     }
+
+    positionCollapseButton();
+}
+
+void FilterPanel::positionCollapseButton()
+{
+    if (!m_collapseButton)
+        return;
+    // The style sheet draws the title in the top margin (top left); the toggle
+    // mirrors it at the top right of the group box.
+    m_collapseButton->move(width() - m_collapseButton->width() - 10, 0);
+}
+
+void FilterPanel::resizeEvent(QResizeEvent *event)
+{
+    QGroupBox::resizeEvent(event);
+    positionCollapseButton();
+}
+
+void FilterPanel::setCollapsed(bool collapsed)
+{
+    if (m_collapsed == collapsed)
+        return;
+    m_collapsed = collapsed;
+    m_content->setVisible(!collapsed);
+    updateCollapseButton();
+    emit collapsedChanged(collapsed);
+}
+
+void FilterPanel::updateCollapseButton()
+{
+    if (!m_collapseButton)
+        return;
+    // The arrow shows what the click does: a collapsed panel points right
+    // ("open it again"), an expanded one down.
+    m_collapseButton->setText(m_collapsed ? QStringLiteral("▸") : QStringLiteral("▾"));
+    m_collapseButton->setToolTip(m_collapsed ? tr("Expand the search and filter panel")
+                                             : tr("Collapse the search and filter panel"));
+    m_collapseButton->setAccessibleName(m_collapseButton->toolTip());
 }
 
 void FilterPanel::retranslateUi()
@@ -270,6 +331,7 @@ void FilterPanel::retranslateUi()
         }
     }
     m_timeEnabled->setToolTip(tr("Enable the time range filter"));
+    updateCollapseButton();
 }
 
 void FilterPanel::rebuildLevelChecks(const QVector<int> &counts)

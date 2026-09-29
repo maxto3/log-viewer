@@ -121,6 +121,44 @@ Options:
     </message>
 </context>
 <context>
+    <name>DurationFormat</name>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="28"/>
+        <source>%1 s</source>
+        <translation>%1 秒</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="37"/>
+        <source>%1 h %2 min %3 s</source>
+        <translation>%1 时 %2 分 %3 秒</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="39"/>
+        <source>%1 h %2 min</source>
+        <translation>%1 时 %2 分</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="41"/>
+        <source>%1 h %2 s</source>
+        <translation>%1 时 %2 秒</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="42"/>
+        <source>%1 h</source>
+        <translation>%1 时</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="45"/>
+        <source>%1 min %2 s</source>
+        <translation>%1 分 %2 秒</translation>
+    </message>
+    <message>
+        <location filename="../core/DurationFormat.cpp" line="46"/>
+        <source>%1 min</source>
+        <translation>%1 分</translation>
+    </message>
+</context>
+<context>
     <name>Formats</name>
     <message>
         <location filename="../core/formats/GenericFormat.cpp" line="46"/>
@@ -417,6 +455,16 @@ Options:
         <location filename="../ui/FilterPanel.cpp" line="302"/>
         <source>Show entries of this level (%1 entries)</source>
         <translation>显示该级别的条目（%1 条）</translation>
+    </message>
+    <message>
+        <location filename="../ui/FilterPanel.cpp" line="269"/>
+        <source>Expand the search and filter panel</source>
+        <translation>展开查找与过滤面板</translation>
+    </message>
+    <message>
+        <location filename="../ui/FilterPanel.cpp" line="270"/>
+        <source>Collapse the search and filter panel</source>
+        <translation>折叠查找与过滤面板</translation>
     </message>
 </context>
 <context>
@@ -822,6 +870,21 @@ Load the complete file now?</source>
         <location filename="../ui/MainWindow.cpp" line="1155"/>
         <source>Show All Columns</source>
         <translation>显示全部列</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp" line="518"/>
+        <source>Full Screen</source>
+        <translation>全屏</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp" line="520"/>
+        <source>Collapse the search and filter panel and use the whole screen (F11; leave with Esc)</source>
+        <translation>折叠查找与过滤面板并使用全屏显示（F11；按 Esc 退出全屏）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp" line="1354"/>
+        <source>Loaded in %1</source>
+        <translation>加载耗时 %1</translation>
     </message>
 </context>
 </TS>

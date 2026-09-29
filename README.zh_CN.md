@@ -21,6 +21,8 @@
 | 编码 | UTF-8（含 BOM）、UTF-16 自动识别；非 UTF-8 自动检测 GB18030/GBK、Big5、Shift_JIS、CP1252 并转换为 UTF-8 显示 |
 | 语言 | 完整英文与简体中文界面，运行时即时切换 |
 | 主题 | 浅色 / 深色 / 跟随系统；语法高亮主题可独立设置 |
+| 视图 | 查找与过滤分组框可折叠为标题单行，为表格腾出空间；全屏（`F11`，`Esc` 退出）自动折叠该分组框 |
+| 状态栏 | 左下角显示最近一次打开日志的耗时（中文界面为「加载耗时 0.35 秒」，按秒 / 分 / 时自适应）；右侧依次显示文件名、格式、编码、行数与监控状态 |
 
 ## 环境要求
 
@@ -48,8 +50,8 @@ cd log-viewer
 # 4) 测试
 .\scripts\test.ps1
 
-# 5) 便携目录（可执行文件 + Qt 运行时 + 翻译）
-.\scripts\package.ps1 -Config Release                    # 输出 dist\log-viewer\
+# 5) 便携包（可执行文件 + Qt 运行时 + 翻译，压缩为一个 zip）
+.\scripts\package.ps1 -Config Release                    # 输出 dist\log-viewer-<版本>-win64.zip
 
 # 6) 可选：把 .log 关联到本程序（仅当前用户，可撤销）
 .\scripts\register-association.ps1
@@ -57,7 +59,10 @@ cd log-viewer
 ```
 
 构建产物位于 `build\windows-msvc-qt6-release\bin\log-viewer.exe`；该目录已由
-`windeployqt` 部署完整，`package.ps1` 产出的 `dist\log-viewer\` 是清理后的分发版本。
+`windeployqt` 部署完整，`package.ps1` 在此基础上重新部署并把可执行文件与全部依赖
+（Qt DLL、插件、翻译、文档）压缩为单个 `dist\log-viewer-<版本>-win64.zip`——
+`dist\` 下只有这个压缩包，解压后为顶层目录 `log-viewer-<版本>\`。版本号取自
+`CMakeLists.txt`。
 
 手动构建（任意已把 CMake/Ninja 加入 PATH 的终端）：
 
@@ -70,7 +75,7 @@ ctest --preset windows-msvc-qt6-release --output-on-failure
 ## Linux 构建与运行
 
 > **尚未验证**：Linux 代码路径按可移植性要求编写，但未在本开发机上实际构建
-> （见 spec.md REQ-PLAT-10）。以下为预期步骤。
+> （见 docs/spec.md REQ-PLAT-10）。以下为预期步骤。
 
 ```bash
 sudo apt install build-essential cmake ninja-build \
@@ -116,6 +121,9 @@ log-viewer [选项] [日志文件...]
 | `Ctrl+O` / `F5` / `Ctrl+W` / `Ctrl+Q` | 打开 / 刷新 / 关闭 / 退出 |
 | `Ctrl+M` | 切换实时监控 |
 | `Ctrl+E` | 导出过滤后的行（CSV 或文本） |
+| `F11` | 进入 / 退出全屏（*设置 ▸ 全屏*）；进入时自动折叠查找与过滤分组框 |
+| `Esc` | 退出全屏（查找与过滤分组框恢复进入全屏前的状态） |
+| "查找与过滤"标题右侧 `▾` / `▸` | 折叠 / 展开查找与过滤分组框（只隐藏输入行，已生效的条件继续生效） |
 | `Ctrl` + 滚轮 | 临时缩放字体 |
 | 把日志文件拖到窗口 | 打开（同格式自动合并）；文件夹会被忽略并提示 |
 | 右键 | 复制单元格 / 整行 / 消息，列宽自适应 |
@@ -129,6 +137,7 @@ log-viewer [选项] [日志文件...]
   * **详情框** — *显示详情框*：勾选=始终显示（打开日志自动选中第一条），取消=始终不显示；
     **布局** 子菜单选择详情框位置（右侧或底部）
   * **外观** — 主题（浅色/深色/跟随系统）、语法高亮主题（跟随主题 / VSCode Dark+ / Light+）、高亮颜色、重置全部设置
+  * **全屏** — 勾选项，`F11`：自动折叠查找与过滤分组框并全屏显示；`Esc` 退出全屏并恢复分组框状态
 * **列(Columns)** — 位于设置与关于之间的顶级菜单：按当前文档的列动态生成勾选项，取消勾选即隐藏该列（选择按文档记忆）；行号列始终显示；*显示全部列* 一键恢复
 * **关于(About)** — 与文件、设置平级的顶级菜单项：版本、构建信息、许可证
 
@@ -144,8 +153,8 @@ log-viewer [选项] [日志文件...]
 
 ## 文档
 
-* `spec.md` — 需求规格说明书（唯一权威来源）
-* `design-doc.md` — 技术设计与实施记录
+* `docs/spec.md` — 需求规格说明书（唯一权威来源）
+* `docs/design-doc.md` — 技术设计与实施记录
 * `screenshots/` — 精选界面截图（索引见 `screenshots/README.md`）
 
 ## 目录结构
@@ -156,7 +165,7 @@ src/core/       行索引、数据源、日志格式解析器、表格模型、�
 src/highlight/  VSCode 配色表、JSON/XML/YAML tokenizer、消息高亮
 src/platform/   平台相关实现（编码、字体、路径）
 src/ui/         主窗口、过滤面板、表格视图、详情框、对话框
-tests/          Qt Test 测试（13 个目标）与冻结日志样本（tests/data/）
+tests/          Qt Test 测试（14 个目标）与冻结日志样本（tests/data/）
 test-data/      本地手工测试用的样本日志（已加入 .gitignore，不入库）
 scripts/        构建、测试、运行、打包与文件关联脚本
 packaging/      Linux 桌面项、AppStream 元数据、图标、CPack DEB

@@ -14,6 +14,7 @@ class QGroupBox;
 class QLabel;
 class QMenu;
 class QPushButton;
+class QShortcut;
 class QSplitter;
 class QStackedWidget;
 
@@ -48,6 +49,7 @@ public:
     // Diagnostics and test accessors ---------------------------------------
     LogTableView *logTableView() const { return m_tableView; }
     DetailPane *detailPane() const { return m_detailPane; }
+    FilterPanel *filterPanel() const { return m_filterPanel; }
     LogTableModel *logModel() const { return m_model; }
     bool isDetailPaneVisible() const;
     bool isFullContentMode() const;
@@ -55,6 +57,10 @@ public:
     int currentRow() const;
     /// File ▸ Monitor action (checkable, enabled for file backed documents).
     QAction *monitorAction() const { return m_monitorAction; }
+    /// Settings ▸ Full Screen action (checkable, F11, REQ-UI-14).
+    QAction *fullScreenAction() const { return m_fullScreenAction; }
+    /// Status bar label with the duration of the last file open (REQ-UI-15).
+    QLabel *loadTimeLabel() const { return m_loadTimeLabel; }
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -89,6 +95,10 @@ public slots:
     void onRowsAppended(int firstRow, int count);
     void onDocumentRebuilt();
     void onMonitorToggled(bool enabled);
+    /// Settings ▸ Full Screen (F11): enters full screen with the search &
+    /// filter panel collapsed, or leaves it and restores the panel state the
+    /// user had before (REQ-UI-14).
+    void setFullScreen(bool fullScreen);
 
 private:
     enum FontRole { InterfaceFontRole = 0, TableFontRole = 1, HeaderFontRole = 2 };
@@ -103,6 +113,9 @@ private:
     void retranslateUi();
     void applyFonts();
     void applyTheme(bool dark);
+    /// Reacts to window state changes (menu check mark, Esc shortcut and the
+    /// automatic collapse of the search & filter panel in full screen).
+    void applyFullScreenState();
     void applyDetailsPosition();
     /// Applies the Settings ▸ Details Pane switch (always visible vs. opened by
     /// clicking a row).
@@ -136,6 +149,10 @@ private:
     void updateRecentFilesMenu();
     void reportError(const QString &message);
     void showDetailPane();
+    /// Stores the duration of the last document open and refreshes the status
+    /// bar label (REQ-UI-15); a negative value clears it.
+    void setLoadTime(qint64 milliseconds);
+    void updateLoadTimeLabel();
 
 public:
     /// Writes the geometry of the main widgets to \a path; used by the layout
@@ -174,6 +191,11 @@ private:
     QLabel *m_docLabel = nullptr;
     QLabel *m_statsLabel = nullptr;
     QLabel *m_monitorLabel = nullptr;
+    /// Bottom-left status bar label: duration of the last document open
+    /// (REQ-UI-15). Normal indicator, so a temporary message hides it briefly.
+    QLabel *m_loadTimeLabel = nullptr;
+    /// Milliseconds the last document open took; negative = nothing to show.
+    qint64 m_lastLoadMs = -1;
 
     // Menus and actions ----------------------------------------------------
     QMenu *m_fileMenu = nullptr;
@@ -203,6 +225,22 @@ private:
     QAction *m_tableFontAction = nullptr;
     QAction *m_headerFontAction = nullptr;
     QAction *m_resetFontsAction = nullptr;
+
+    QAction *m_fullScreenAction = nullptr;
+    /// Esc leaves full screen; disabled while the window is not full screen so
+    /// the key stays available for other widgets (REQ-UI-14).
+    QShortcut *m_escapeShortcut = nullptr;
+    /// True while the window is in full screen mode.
+    bool m_fullScreenActive = false;
+    /// Collapse state of the search & filter panel before full screen, restored
+    /// when the user leaves it again.
+    bool m_collapsedBeforeFullScreen = false;
+    /// Maximized state before full screen: leaving full screen returns to the
+    /// maximized window instead of the restored one.
+    bool m_wasMaximizedBeforeFullScreen = false;
+    /// Window geometry before full screen; saved instead of the full screen
+    /// geometry when the window is closed while full screen (REQ-UI-14).
+    QByteArray m_geometryBeforeFullScreen;
 
     QAction *m_englishAction = nullptr;
     QAction *m_chineseAction = nullptr;

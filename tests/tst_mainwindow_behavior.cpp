@@ -4,6 +4,7 @@
 #include "core/LogTableModel.h"
 #include "highlight/SnippetTokenizer.h"
 #include "ui/DetailPane.h"
+#include "ui/FilterPanel.h"
 #include "ui/LogItemDelegate.h"
 #include "ui/LogTableView.h"
 #include "ui/MainWindow.h"
@@ -17,6 +18,7 @@
 #include <QDropEvent>
 #include <QFile>
 #include <QImage>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
@@ -24,9 +26,13 @@
 #include <QPainter>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSignalSpy>
+#include <QStatusBar>
+#include <QStyleOptionViewItem>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextOption>
+#include <QToolButton>
 #include <QUrl>
 
 using namespace lv;
@@ -43,6 +49,7 @@ private slots:
 
     void uncheckedPaneStaysHidden();
     void uncheckedPaneShowsCompleteRows();
+    void rowHeightCoversTheTallestColumn();
     void uncheckedPaneIgnoresRowClicks();
     void checkedSelectsFirstRow();
     void checkedPaneFollowsRowClicks();
@@ -57,11 +64,15 @@ private slots:
     void levelFilterHidesNonMatchingRows();
     void levelListFollowsTheDocument();
     void zebraStripesAndGridLines();
+    void filterPanelCollapsesToSingleRow();
+    void fullScreenCollapsesFilterPanel();
     void columnsMenuHidesColumns();
     void autoFitColumnsFitsContent();
     void snippetColorsSurviveTruncation();
     void droppingFilesOpensAndMerges();
     void droppingAFolderIsIgnored();
+    void loadTimeLabelShowsOpenDuration();
+    void headersFollowLanguageSwitch();
     void resetAllKeepsDefaults();
 
 private:
@@ -160,6 +171,107 @@ void TestMainWindowBehavior::uncheckedPaneShowsCompleteRows()
     QVERIFY(longestLength > shortestLength);
     QVERIFY(view->freshContentHeight(longestRow) > view->freshContentHeight(shortestRow));
     QVERIFY(view->rowHeight(longestRow) > view->rowHeight(shortestRow));
+}
+
+void TestMainWindowBehavior::rowHeightCoversTheTallestColumn()
+{
+    // Regression: the row height used to be derived from the message column
+    // only. When another column needed more lines (a long Target with a short
+    // message), the extra line was painted over the row separator - the
+    // paragraph clip replaced the cell clip and let the text escape
+    // (REQ-TABLE-04: nothing may bleed out of its cell).
+    auto settings = makeSettings(QStringLiteral("row-height-columns"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    window.loadDemoData();
+
+    LogTableView *view = window.logTableView();
+    LogTableModel *model = window.logModel();
+    QVERIFY(view != nullptr);
+    QVERIFY(model != nullptr);
+    QVERIFY(view->fullContentMode());
+
+    int targetColumn = -1;
+    for (int column = 0; column < model->columnCount(); ++column) {
+        if (model->columnKind(column) == ColumnKind::Target)
+            targetColumn = column;
+    }
+    QVERIFY(targetColumn >= 0);
+
+    // Squeeze the target column so its values need several lines while the
+    // message column keeps fitting its own text (this combination used to
+    // overflow: the row was sized from the message only).
+    view->setColumnWidth(targetColumn, 60);
+
+    const QFontMetrics metrics(view->font());
+    const int twoLines = metrics.lineSpacing() * 2 + 6;
+
+    // Wait for the deferred height pass, then every row has to fit its tallest
+    // cell.
+    QTRY_VERIFY([&] {
+        for (int row = 0; row < model->rowCount(); ++row) {
+            if (view->rowHeight(row) < view->freshContentHeight(row))
+                return false;
+        }
+        return true;
+    }());
+
+    // The critical combination: a single line message with a target that wraps
+    // into more than one line. The row used to be sized from the message only,
+    // so the target was painted over the row separator.
+    const int messageColumn = view->messageColumnIndex();
+    QVERIFY(messageColumn >= 0);
+    constexpr int kCellPadding = 14;      // LogItemDelegate::kHPadding * 2
+    const int messageWidth = view->columnWidth(messageColumn) - kCellPadding;
+    const int targetWidth = view->columnWidth(targetColumn) - kCellPadding;
+
+    int checkedRows = 0;
+    for (int row = 0; row < model->rowCount(); ++row) {
+        const QString message = model->cellText(row, messageColumn);
+        const QString target = model->cellText(row, targetColumn);
+        if (message.contains(QLatin1Char('\n')) || target.contains(QLatin1Char('\n')))
+            continue;                       // multi paragraph cells always need several lines
+        if (metrics.horizontalAdvance(message) > messageWidth)
+            continue;                       // the message alone needs several lines
+        if (metrics.horizontalAdvance(target) <= targetWidth)
+            continue;                       // the target fits on one line
+
+        ++checkedRows;
+        QVERIFY2(view->rowHeight(row) >= twoLines,
+                 qPrintable(QStringLiteral("row %1: height=%2, message is one line but the "
+                                           "target needs more")
+                                .arg(row)
+                                .arg(view->rowHeight(row))));
+    }
+    QVERIFY2(checkedRows > 0, "no row with a wrapping target and a single line message");
+
+    // Painting guard: even when a cell is given a too short rectangle (a stale
+    // height or a mid-layout pass), nothing may be painted below it.
+    const QModelIndex index = model->index(0, targetColumn);
+    QVERIFY(index.isValid());
+    QStyleOptionViewItem option;
+    option.rect = QRect(0, 0, view->columnWidth(targetColumn), twoLines / 2);
+    option.palette = view->palette();
+    option.state = QStyle::State_Enabled;
+
+    QImage image(option.rect.width() + 40, option.rect.height() + 60,
+                 QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    view->itemDelegate()->paint(&painter, option, index);
+    painter.end();
+
+    for (int y = option.rect.bottom() + 1; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            QVERIFY2(qAlpha(image.pixel(x, y)) == 0,
+                     qPrintable(QStringLiteral("painted outside the cell at (%1,%2)")
+                                    .arg(x)
+                                    .arg(y)));
+        }
+    }
 }
 
 void TestMainWindowBehavior::uncheckedPaneIgnoresRowClicks()
@@ -614,6 +726,146 @@ void TestMainWindowBehavior::zebraStripesAndGridLines()
     QCOMPARE(selected.pixelColor(60, 20), highlight);
 }
 
+void TestMainWindowBehavior::filterPanelCollapsesToSingleRow()
+{
+    // REQ-UI-13: the "Search & Filter" group box collapses to its title row so
+    // the log table gains the space. Collapsing only hides the form - already
+    // applied find / filter conditions keep working.
+    auto settings = makeSettings(QStringLiteral("collapse-panel"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    window.loadDemoData();
+
+    FilterPanel *panel = window.filterPanel();
+    QVERIFY(panel != nullptr);
+    QVERIFY(!panel->isCollapsed());
+    const int expandedHeight = panel->height();
+    QVERIFY(expandedHeight > 0);
+
+    auto *toggle = panel->findChild<QToolButton *>(QStringLiteral("filterCollapseButton"));
+    QVERIFY(toggle != nullptr);
+    QVERIFY(toggle->isVisible());
+    QCOMPARE(toggle->text(), QStringLiteral("▾"));
+
+    // The toggle in the title row collapses the panel (form hidden) and the
+    // freed space goes to the log table (nothing below the title row remains).
+    QTest::mouseClick(toggle, Qt::LeftButton);
+    QTRY_VERIFY(panel->isCollapsed());
+    QCOMPARE(toggle->text(), QStringLiteral("▸"));
+    QVERIFY(toggle->isVisible());
+    QTRY_VERIFY(panel->height() < expandedHeight);
+    const int collapsedHeight = panel->height();
+    QVERIFY2(collapsedHeight * 2 <= expandedHeight,
+             qPrintable(QStringLiteral("collapsed=%1 expanded=%2")
+                            .arg(collapsedHeight)
+                            .arg(expandedHeight)));
+    const int tableHeightCollapsed = window.logTableView()->height();
+
+    // Expanding restores the complete form and the table gives the space back.
+    QTest::mouseClick(toggle, Qt::LeftButton);
+    QTRY_VERIFY(!panel->isCollapsed());
+    QCOMPARE(toggle->text(), QStringLiteral("▾"));
+    QTRY_COMPARE(panel->height(), expandedHeight);
+    QTRY_VERIFY(window.logTableView()->height() < tableHeightCollapsed);
+
+    // A condition applied before collapsing keeps filtering while collapsed.
+    auto *filterEdit = panel->findChild<QLineEdit *>(QStringLiteral("filterEdit"));
+    QVERIFY(filterEdit != nullptr);
+    filterEdit->setText(QStringLiteral("CONNECT"));
+    QTest::keyClick(filterEdit, Qt::Key_Return);
+    QTRY_VERIFY(window.logModel()->isFiltered());
+    const int filteredRows = window.logModel()->rowCount();
+    QVERIFY(filteredRows > 0);
+    QVERIFY(filteredRows < window.logModel()->provider()->rowCount());
+
+    panel->setCollapsed(true);
+    QTRY_VERIFY(panel->isCollapsed());
+    QCOMPARE(window.logModel()->rowCount(), filteredRows);
+
+    // The API and the toggle button agree on the state.
+    QSignalSpy spy(panel, &FilterPanel::collapsedChanged);
+    panel->setCollapsed(false);
+    QVERIFY(!panel->isCollapsed());
+    QCOMPARE(spy.count(), 1);
+}
+
+void TestMainWindowBehavior::fullScreenCollapsesFilterPanel()
+{
+    // REQ-UI-14: Settings ▸ Full Screen (F11) collapses the search & filter
+    // panel and maximises the window; Esc leaves full screen and restores the
+    // collapse state the panel had before.
+    auto settings = makeSettings(QStringLiteral("fullscreen"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    window.loadDemoData();
+
+    FilterPanel *panel = window.filterPanel();
+    QAction *fullScreen = window.fullScreenAction();
+    QVERIFY(panel != nullptr);
+    QVERIFY(fullScreen != nullptr);
+    QVERIFY(fullScreen->isCheckable());
+    QCOMPARE(fullScreen->shortcut(), QKeySequence(Qt::Key_F11));
+
+    // The action lives in the Settings menu (File is the first top level menu).
+    const QList<QAction *> topLevel = window.menuBar()->actions();
+    QVERIFY(topLevel.size() >= 2);
+    QMenu *settingsMenu = topLevel.at(1)->menu();
+    QVERIFY(settingsMenu != nullptr);
+    QVERIFY(settingsMenu->actions().contains(fullScreen));
+
+    QVERIFY(!window.isFullScreen());
+    QVERIFY(!panel->isCollapsed());
+
+    fullScreen->trigger();
+    QTRY_VERIFY(window.isFullScreen());
+    QVERIFY(fullScreen->isChecked());
+    QVERIFY(panel->isCollapsed());
+
+    // Esc leaves full screen and expands the panel again.
+    QWidget *focus = window.focusWidget() ? window.focusWidget() : &window;
+    QTest::keyClick(focus, Qt::Key_Escape);
+    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(!fullScreen->isChecked());
+    QVERIFY(!panel->isCollapsed());
+
+    // F11 is the same toggle as the menu item.
+    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_F11);
+    QTRY_VERIFY(window.isFullScreen());
+    QVERIFY(panel->isCollapsed());
+    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
+    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(!panel->isCollapsed());
+
+    // A panel the user collapsed before entering full screen stays collapsed
+    // after leaving it.
+    panel->setCollapsed(true);
+    fullScreen->trigger();
+    QTRY_VERIFY(window.isFullScreen());
+    QVERIFY(panel->isCollapsed());
+    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
+    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(panel->isCollapsed());
+
+    // A window that was maximized before full screen comes back maximized
+    // (REQ-UI-14). The filter panel state is restored either way.
+    panel->setCollapsed(false);
+    window.showMaximized();
+    QTRY_VERIFY(window.isMaximized());
+    fullScreen->trigger();
+    QTRY_VERIFY(window.isFullScreen());
+    QVERIFY(panel->isCollapsed());
+    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
+    QTRY_VERIFY(!window.isFullScreen());
+    QTRY_VERIFY(window.isMaximized());
+    QVERIFY(!panel->isCollapsed());
+}
+
 void TestMainWindowBehavior::columnsMenuHidesColumns()
 {
     // REQ-UI-12 / REQ-TABLE-11: a top level "Columns" menu between Settings and
@@ -979,6 +1231,114 @@ void TestMainWindowBehavior::droppingAFolderIsIgnored()
                          Qt::NoModifier);
     QApplication::sendEvent(&window, &dropEvent);
     QCOMPARE(window.logModel()->rowCount(), 0);
+}
+
+void TestMainWindowBehavior::loadTimeLabelShowsOpenDuration()
+{
+    // REQ-UI-15: after a file is opened the bottom left corner of the status bar
+    // shows the elapsed time. The label is a normal indicator (left of the
+    // permanent file/statistics/monitor labels) and a document without a file
+    // (demo data) clears it again.
+    const QString path = QDir(m_dir.path()).filePath(QStringLiteral("load-time.log"));
+    {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("2026-09-28 10:00:00 INFO first\n"
+                   "2026-09-28 10:00:01 WARN second\n");
+    }
+
+    auto settings = makeSettings(QStringLiteral("load-time"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    QLabel *label = window.loadTimeLabel();
+    QVERIFY(label != nullptr);
+    QCOMPARE(label->objectName(), QStringLiteral("loadTimeLabel"));
+    QVERIFY(label->text().isEmpty());
+
+    window.openPaths({path}, QString());
+    QVERIFY(!label->text().isEmpty());
+
+    // "Loaded in 0.42 s": translated prefix plus a formatted duration.
+    const QString translated = QCoreApplication::translate("MainWindow", "Loaded in %1");
+    const QString prefix = translated.left(translated.indexOf(QStringLiteral("%1")));
+    QVERIFY2(label->text().startsWith(prefix), qPrintable(label->text()));
+    QVERIFY(label->text().endsWith(QStringLiteral("s")));
+
+    // The label is the left-most status widget: every permanent indicator
+    // (file name, statistics, monitor) sits to its right.
+    QStatusBar *bar = window.statusBar();
+    const int loadX = label->mapTo(bar, QPoint(0, 0)).x();
+    QVERIFY(loadX < bar->width() / 2);
+    for (QLabel *other : bar->findChildren<QLabel *>()) {
+        if (other == label)
+            continue;
+        const int otherX = other->mapTo(bar, QPoint(0, 0)).x();
+        QVERIFY2(otherX > loadX, qPrintable(QStringLiteral("%1 at %2, load label at %3")
+                                                .arg(other->text())
+                                                .arg(otherX)
+                                                .arg(loadX)));
+    }
+
+    // Closing the document removes the value (File ▸ Close).
+    QAction *closeAction = nullptr;
+    QMenu *fileMenu = window.menuBar()->actions().value(0)->menu();
+    QVERIFY(fileMenu != nullptr);
+    for (QAction *action : fileMenu->actions()) {
+        if (action->shortcut() == QKeySequence(QKeySequence::Close)) {
+            closeAction = action;
+            break;
+        }
+    }
+    QVERIFY(closeAction != nullptr);
+    closeAction->trigger();
+    QTRY_VERIFY(label->text().isEmpty());
+
+    // A document without a file (demo data) does not show a load time either.
+    window.loadDemoData();
+    QVERIFY(label->text().isEmpty());
+}
+
+void TestMainWindowBehavior::headersFollowLanguageSwitch()
+{
+    // Regression: the column titles were resolved when the columns were built,
+    // so switching the UI language retranslated every widget except the table
+    // header (and the Columns menu). The titles are translated on demand now and
+    // retranslateHeaders() refreshes the header (REQ-I18N-02).
+    auto settings = makeSettings(QStringLiteral("headers-language"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    window.loadDemoData();
+
+    LogTableModel *model = window.logModel();
+    QVERIFY(model != nullptr);
+
+    const auto titleOf = [model](ColumnKind kind) {
+        for (int column = 0; column < model->columnCount(); ++column) {
+            if (model->columnKind(column) == kind)
+                return model->headerData(column, Qt::Horizontal, Qt::DisplayRole).toString();
+        }
+        return QString();
+    };
+
+    // The test starts without a translator installed: the source language is English.
+    QCOMPARE(titleOf(ColumnKind::Message), QStringLiteral("Message"));
+
+    translations.setLanguage(QStringLiteral("zh_CN"));
+    const QString chinese = titleOf(ColumnKind::Message);
+    if (chinese == QLatin1String("Message"))
+        QSKIP("the Chinese translation catalogue is not available in this build");
+    QCOMPARE(chinese, QStringLiteral("消息"));
+
+    // ... and switching back restores the English titles.
+    translations.setLanguage(QStringLiteral("en"));
+    QCOMPARE(titleOf(ColumnKind::Message), QStringLiteral("Message"));
 }
 
 void TestMainWindowBehavior::resetAllKeepsDefaults()

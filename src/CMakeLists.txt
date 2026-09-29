@@ -14,6 +14,8 @@ set(LOGVIEWER_CORE_SOURCES
     platform/PlatformInfo.h
 
     core/ColumnKind.h
+    core/DurationFormat.cpp
+    core/DurationFormat.h
     core/FilterSpec.h
     core/IEntryProvider.h
     core/LogDocument.cpp
@@ -89,9 +91,23 @@ qt_add_library(logviewer_ui STATIC ${LOGVIEWER_UI_SOURCES})
 target_include_directories(logviewer_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(logviewer_ui PUBLIC logviewer_core Qt6::Widgets)
 
-qt_add_executable(log-viewer main.cpp)
+qt_add_executable(log-viewer
+    main.cpp
+    "${CMAKE_SOURCE_DIR}/resources/resources.qrc")
 set_target_properties(log-viewer PROPERTIES WIN32_EXECUTABLE TRUE)
 target_link_libraries(log-viewer PRIVATE logviewer_ui)
+
+# Windows: the executable carries the application icon for Explorer, the
+# taskbar and Alt-Tab (REQ-VIS-11).  The .ico is rendered from the Linux
+# desktop icon artwork; rc.exe resolves resource paths relative to its working
+# directory, so the absolute path is substituted here.
+if(WIN32)
+    file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}/packaging/windows/log-viewer.ico"
+         LOGVIEWER_WINDOWS_ICON)
+    configure_file("${CMAKE_SOURCE_DIR}/packaging/windows/log-viewer.rc.in"
+                   "${CMAKE_CURRENT_BINARY_DIR}/log-viewer.rc" @ONLY)
+    target_sources(log-viewer PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/log-viewer.rc")
+endif()
 
 function(logviewer_enable_warnings target)
     if(MSVC)

@@ -65,15 +65,15 @@ void LogTableModel::setProvider(EntryProviderPtr provider)
 
 void LogTableModel::rebuildColumns()
 {
+    // The titles are not stored: headerData() translates them on demand, so a
+    // language switch updates the table header without rebuilding the columns
+    // (REQ-I18N-02, see retranslateHeaders()).
     m_columns.clear();
     if (!m_provider || m_provider->rowCount() <= 0) {
-        m_columns.append({ColumnKind::Line, {}, columnTitle(ColumnKind::Line),
-                          defaultWidth(ColumnKind::Line)});
-        m_columns.append({ColumnKind::Time, {}, columnTitle(ColumnKind::Time),
-                          defaultWidth(ColumnKind::Time)});
-        m_columns.append({ColumnKind::Level, {}, columnTitle(ColumnKind::Level),
-                          defaultWidth(ColumnKind::Level)});
-        m_columns.append({ColumnKind::Message, {}, columnTitle(ColumnKind::Message), 0});
+        m_columns.append({ColumnKind::Line, {}, defaultWidth(ColumnKind::Line)});
+        m_columns.append({ColumnKind::Time, {}, defaultWidth(ColumnKind::Time)});
+        m_columns.append({ColumnKind::Level, {}, defaultWidth(ColumnKind::Level)});
+        m_columns.append({ColumnKind::Message, {}, 0});
         return;
     }
 
@@ -114,40 +114,29 @@ void LogTableModel::rebuildColumns()
 
     // The physical line number comes first: it is the natural anchor when
     // comparing the table with the raw file (spec.md REQ-PARSE-03).
-    m_columns.append({ColumnKind::Line, {}, columnTitle(ColumnKind::Line),
-                      defaultWidth(ColumnKind::Line)});
-    if (info.multiFile) {
-        m_columns.append({ColumnKind::File, {}, columnTitle(ColumnKind::File),
-                          defaultWidth(ColumnKind::File)});
-    }
+    m_columns.append({ColumnKind::Line, {}, defaultWidth(ColumnKind::Line)});
+    if (info.multiFile)
+        m_columns.append({ColumnKind::File, {}, defaultWidth(ColumnKind::File)});
     if (withTime > 0)
-        m_columns.append({ColumnKind::Time, {}, columnTitle(ColumnKind::Time),
-                          defaultWidth(ColumnKind::Time)});
+        m_columns.append({ColumnKind::Time, {}, defaultWidth(ColumnKind::Time)});
     if (withLevel > 0)
-        m_columns.append({ColumnKind::Level, {}, columnTitle(ColumnKind::Level),
-                          defaultWidth(ColumnKind::Level)});
+        m_columns.append({ColumnKind::Level, {}, defaultWidth(ColumnKind::Level)});
     if (visible(threadHits.value(QStringLiteral("_"))))
-        m_columns.append({ColumnKind::Thread, {}, columnTitle(ColumnKind::Thread),
-                          defaultWidth(ColumnKind::Thread)});
+        m_columns.append({ColumnKind::Thread, {}, defaultWidth(ColumnKind::Thread)});
     if (visible(pidHits.value(QStringLiteral("_"))))
-        m_columns.append({ColumnKind::Pid, {}, columnTitle(ColumnKind::Pid),
-                          defaultWidth(ColumnKind::Pid)});
+        m_columns.append({ColumnKind::Pid, {}, defaultWidth(ColumnKind::Pid)});
     if (visible(hostHits.value(QStringLiteral("_"))))
-        m_columns.append({ColumnKind::Host, {}, columnTitle(ColumnKind::Host),
-                          defaultWidth(ColumnKind::Host)});
+        m_columns.append({ColumnKind::Host, {}, defaultWidth(ColumnKind::Host)});
     if (visible(targetHits.value(QStringLiteral("_"))))
-        m_columns.append({ColumnKind::Target, {}, columnTitle(ColumnKind::Target),
-                          defaultWidth(ColumnKind::Target)});
+        m_columns.append({ColumnKind::Target, {}, defaultWidth(ColumnKind::Target)});
 
     // Dynamic extra columns, ordered alphabetically for stable layouts.
     for (auto it = extraHits.constBegin(); it != extraHits.constEnd(); ++it) {
-        if (visible(it.value())) {
-            m_columns.append({ColumnKind::Extra, it.key(), it.key(),
-                              defaultWidth(ColumnKind::Extra)});
-        }
+        if (visible(it.value()))
+            m_columns.append({ColumnKind::Extra, it.key(), defaultWidth(ColumnKind::Extra)});
     }
 
-    m_columns.append({ColumnKind::Message, {}, columnTitle(ColumnKind::Message), 0});
+    m_columns.append({ColumnKind::Message, {}, 0});
 }
 
 int LogTableModel::rowCount(const QModelIndex &parent) const
@@ -330,7 +319,22 @@ QVariant LogTableModel::headerData(int section, Qt::Orientation orientation, int
         return {};
     if (section < 0 || section >= m_columns.size())
         return {};
-    return m_columns.at(section).title;
+    const Column &column = m_columns.at(section);
+    // Translated on demand: a language switch must update the table header
+    // without rebuilding the columns (REQ-I18N-02). The key of an extra column
+    // is log data, not UI text, so it stays untranslated.
+    if (column.kind == ColumnKind::Extra)
+        return column.extraKey;
+    return columnTitle(column.kind);
+}
+
+void LogTableModel::retranslateHeaders()
+{
+    if (m_columns.isEmpty())
+        return;
+    // The titles are computed by headerData(); this makes the views repaint the
+    // header sections after the translator changed (REQ-I18N-02).
+    emit headerDataChanged(Qt::Horizontal, 0, m_columns.size() - 1);
 }
 
 void LogTableModel::appendRows(int firstRow)

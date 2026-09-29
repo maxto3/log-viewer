@@ -29,6 +29,9 @@ public:
 
     explicit FilterPanel(QWidget *parent = nullptr);
 
+    /// True while the panel is collapsed to its title row (REQ-UI-13).
+    bool isCollapsed() const { return m_collapsed; }
+
     /// Rebuilds the level check boxes from the level histogram of the loaded
     /// document: only the levels that actually occur are listed. The user's
     /// unchecked levels are remembered across documents.
@@ -62,8 +65,14 @@ public:
 
 public slots:
     void retranslateUi();
+    /// Collapses the panel to its title row (true) or shows the complete form
+    /// again (false). Collapsing only hides the widgets: already applied find
+    /// and filter conditions keep working (REQ-UI-13).
+    void setCollapsed(bool collapsed);
 
 signals:
+    /// Emitted after the collapse state changed (toggle button or API).
+    void collapsedChanged(bool collapsed);
     void findChanged(const QString &text, int mode, bool caseSensitive);
     void filterChanged(const QString &text, int mode, bool caseSensitive);
     void levelsChanged(int levelMask);
@@ -71,8 +80,15 @@ signals:
     void findNextRequested();
     void findPreviousRequested();
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private:
     void buildLayout();
+    /// Keeps the collapse toggle in the title row (top right corner).
+    void positionCollapseButton();
+    /// Updates the arrow and the tool tip for the current collapse state.
+    void updateCollapseButton();
     void emitFindChanged();
     void emitFilterChanged();
     void emitLevelsChanged();
@@ -84,6 +100,13 @@ private:
     QString levelTooltip(int count) const;
     void applyTimePreset(int minutes);
     void setAllLevelsChecked(bool checked);
+
+    /// Holds every input row; hidden while the panel is collapsed.
+    QWidget *m_content = nullptr;
+    /// Toggle in the title row; the only widget that stays visible when the
+    /// panel is collapsed.
+    QToolButton *m_collapseButton = nullptr;
+    bool m_collapsed = false;
 
     QLineEdit *m_findEdit = nullptr;
     QComboBox *m_findMode = nullptr;

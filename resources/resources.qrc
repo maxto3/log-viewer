@@ -1,0 +1,17 @@
+<!-- Built-in application resources (design-doc §4).
+
+     The window icon is the same artwork as the Linux desktop icon
+     (packaging/linux/icons/hicolor/scalable/apps/log-viewer.svg), rendered
+     once at the sizes the window managers ask for.  PNG keeps the icon
+     loadable with plain QtGui, no SVG image plugin required. -->
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="log-viewer-16.png">icons/log-viewer-16.png</file>
+        <file alias="log-viewer-24.png">icons/log-viewer-24.png</file>
+        <file alias="log-viewer-32.png">icons/log-viewer-32.png</file>
+        <file alias="log-viewer-48.png">icons/log-viewer-48.png</file>
+        <file alias="log-viewer-64.png">icons/log-viewer-64.png</file>
+        <file alias="log-viewer-128.png">icons/log-viewer-128.png</file>
+        <file alias="log-viewer-256.png">icons/log-viewer-256.png</file>
+    </qresource>
+</RCC>

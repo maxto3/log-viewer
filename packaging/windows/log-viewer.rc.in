@@ -1,0 +1,6 @@
+// Windows icon resource: Explorer, the taskbar and Alt-Tab take the icon from
+// the executable.  The artwork is the same as the Linux desktop icon
+// (packaging/linux/icons/hicolor/scalable/apps/log-viewer.svg), rendered into
+// packaging/windows/log-viewer.ico at 16-256 px; the path is substituted by
+// CMake (see src/CMakeLists.txt).
+IDI_ICON1 ICON DISCARDABLE "@LOGVIEWER_WINDOWS_ICON@"

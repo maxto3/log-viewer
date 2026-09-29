@@ -2,6 +2,7 @@
 
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
+#include "core/DurationFormat.h"
 #include "core/FilterSpec.h"
 #include "core/LogDocument.h"
 #include "core/LogSource.h"
@@ -22,6 +23,7 @@
 #include <QColorDialog>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QElapsedTimer>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontDialog>
@@ -35,10 +37,12 @@
 #include <QMimeData>
 #include <QPushButton>
 #include <QScreen>
+#include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTextStream>
+#include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QtGlobal>
@@ -240,6 +244,19 @@ void MainWindow::createActions()
     connect(m_syntaxLightAction, &QAction::triggered, this,
             [selectSyntax] { selectSyntax(QStringLiteral("light+")); });
 
+    m_fullScreenAction = new QAction(this);
+    m_fullScreenAction->setCheckable(true);
+    m_fullScreenAction->setShortcut(QKeySequence(Qt::Key_F11));
+    connect(m_fullScreenAction, &QAction::triggered, this, &MainWindow::setFullScreen);
+
+    // Esc only leaves full screen while the window actually is in full screen
+    // mode, so the key stays free for the table and the dialogs otherwise
+    // (REQ-UI-14).
+    m_escapeShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    m_escapeShortcut->setContext(Qt::WindowShortcut);
+    m_escapeShortcut->setEnabled(false);
+    connect(m_escapeShortcut, &QShortcut::activated, this, [this] { setFullScreen(false); });
+
     m_resetAllAction = new QAction(this);
     connect(m_resetAllAction, &QAction::triggered, this, [this] {
         const auto answer = QMessageBox::question(
@@ -306,6 +323,11 @@ void MainWindow::createMenus()
     m_syntaxMenu->addAction(m_syntaxLightAction);
     m_appearanceMenu->addSeparator();
     m_appearanceMenu->addAction(m_resetAllAction);
+
+    // Full screen is a view mode, but it lives in the Settings menu
+    // (REQ-UI-14) next to the other window level switches.
+    m_settingsMenu->addSeparator();
+    m_settingsMenu->addAction(m_fullScreenAction);
 
     // Columns is a top level menu between Settings and About (REQ-UI-12); its
     // items are rebuilt from the document that is loaded (REQ-TABLE-11).
@@ -389,6 +411,12 @@ void MainWindow::createCentralWidget()
 
 void MainWindow::createStatusBar()
 {
+    // Bottom left: duration of the last file open (REQ-UI-15). Normal status
+    // widgets sit on the left and give way to temporary messages.
+    m_loadTimeLabel = new QLabel(statusBar());
+    m_loadTimeLabel->setObjectName(QStringLiteral("loadTimeLabel"));
+    statusBar()->addWidget(m_loadTimeLabel);
+
     m_docLabel = new QLabel(statusBar());
     m_statsLabel = new QLabel(statusBar());
     m_monitorLabel = new QLabel(statusBar());
@@ -454,6 +482,7 @@ void MainWindow::retranslateUi()
     m_settingsMenu->setTitle(tr("&Settings"));
     m_columnsMenu->setTitle(tr("&Columns"));
     rebuildColumnsMenu();
+    m_model->retranslateHeaders();
     m_recentMenu->setTitle(tr("Recent Files"));
     m_fontMenu->setTitle(tr("Font"));
     m_languageMenu->setTitle(tr("Language"));
@@ -496,6 +525,10 @@ void MainWindow::retranslateUi()
     m_syntaxLightAction->setText(QStringLiteral("VSCode Light+"));
     m_resetAllAction->setText(tr("Reset All Settings"));
 
+    m_fullScreenAction->setText(tr("Full Screen"));
+    m_fullScreenAction->setToolTip(
+        tr("Collapse the search and filter panel and use the whole screen (F11; leave with Esc)"));
+
     m_aboutAction->setText(tr("About"));
     m_logGroup->setTitle(tr("Log"));
     m_emptyTitle->setText(tr("No log file open"));
@@ -531,6 +564,7 @@ void MainWindow::retranslateUi()
     m_syntaxLightAction->setChecked(syntax == QLatin1String("light+"));
 
     updateDocumentUi();
+    updateLoadTimeLabel();
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -588,14 +622,64 @@ void MainWindow::dropEvent(QDropEvent *event)
 
 void MainWindow::changeEvent(QEvent *event)
 {
-    if (event->type() == QEvent::LanguageChange)
+    if (event->type() == QEvent::LanguageChange) {
         retranslateUi();
+    } else if (event->type() == QEvent::WindowStateChange) {
+        applyFullScreenState();
+    }
     QMainWindow::changeEvent(event);
+}
+
+void MainWindow::setFullScreen(bool fullScreen)
+{
+    // showFullScreen() / showMaximized() / showNormal() are used instead of
+    // setWindowState(): a maximized window keeps its WindowMaximized flag in
+    // the state combination, which makes the full screen window drift off the
+    // screen on Windows (right edge clipped). applyFullScreenState() runs from
+    // changeEvent() for every transition, also the ones triggered by the
+    // window system.
+    if (fullScreen) {
+        m_wasMaximizedBeforeFullScreen = isMaximized();
+        // Remember the window geometry so closing while full screen does not
+        // persist the full screen state (REQ-UI-14).
+        m_geometryBeforeFullScreen = saveGeometry();
+        showFullScreen();
+    } else if (m_wasMaximizedBeforeFullScreen) {
+        showMaximized();
+    } else {
+        showNormal();
+    }
+}
+
+void MainWindow::applyFullScreenState()
+{
+    const bool fullScreen = isFullScreen();
+
+    m_fullScreenAction->setChecked(fullScreen);
+    m_escapeShortcut->setEnabled(fullScreen);
+
+    if (fullScreen == m_fullScreenActive)
+        return;                       // not a full screen transition
+    m_fullScreenActive = fullScreen;
+
+    if (fullScreen) {
+        // Give the log table as much room as possible (REQ-UI-14); the panel
+        // comes back when the user leaves full screen again.
+        m_collapsedBeforeFullScreen = m_filterPanel->isCollapsed();
+        m_filterPanel->setCollapsed(true);
+    } else {
+        m_filterPanel->setCollapsed(m_collapsedBeforeFullScreen);
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    m_settings->setWindowGeometry(saveGeometry());
+    // Full screen is a temporary view mode (REQ-UI-14): store the geometry the
+    // window had before entering it, never the full screen state itself.
+    if (isFullScreen() && !m_geometryBeforeFullScreen.isEmpty())
+        m_settings->setWindowGeometry(m_geometryBeforeFullScreen);
+    else
+        m_settings->setWindowGeometry(saveGeometry());
     m_settings->setWindowState(saveState());
     m_settings->setSplitterState(m_splitter->saveState());
     saveColumnLayout();
@@ -734,10 +818,12 @@ void MainWindow::onDocumentRebuilt()
         return;
     statusBar()->showMessage(
         tr("The log file was rotated or truncated; the document was reloaded."), 6000);
+    m_tableView->setHeightPassSuspended(true);
     m_model->setProvider(m_source);
     m_tableView->clearExpansion();
     updateDocumentUi();
     applyDetailsBehavior();
+    m_tableView->setHeightPassSuspended(false);
     selectFirstRowIfRequested();
     if (m_monitorAction->isChecked())
         m_tableView->scrollToBottomNow();
@@ -1096,6 +1182,12 @@ void MainWindow::setProvider(const EntryProviderPtr &provider, const QString &pa
 
     m_lastError.clear();
     m_tableView->clearExpansion();
+
+    // Attaching a document touches the model, the column visibility, the widths
+    // and the details pane in turn; every one of those steps used to trigger its
+    // own row height pass. Suspend the passes and run a single one at the end.
+    m_tableView->setHeightPassSuspended(true);
+
     m_model->setProvider(provider);
 
     // Signature of the column layout: format id + column titles.
@@ -1117,6 +1209,7 @@ void MainWindow::setProvider(const EntryProviderPtr &provider, const QString &pa
         m_detailPane->hide();
     updateDocumentUi(true);      // a new document re-syncs the level selection
     applyDetailsBehavior();
+    m_tableView->setHeightPassSuspended(false);
     selectFirstRowIfRequested();
 }
 
@@ -1198,6 +1291,7 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
     if (!hasDocument) {
         m_docLabel->setText(tr("No file open"));
         m_statsLabel->clear();
+        setLoadTime(-1);
         setWindowTitle(QStringLiteral("Log Viewer"));
         m_filterPanel->setLevelCounts({});
         m_refreshAction->setEnabled(false);
@@ -1251,8 +1345,24 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
 void MainWindow::loadDemoData()
 {
     setProvider(createDemoProvider(), QString());
+    setLoadTime(-1);      // demo data is not a file open (REQ-UI-15)
     statusBar()->showMessage(tr("Demo data loaded. Filtering and monitoring arrive in later "
                                "milestones."), 6000);
+}
+
+void MainWindow::setLoadTime(qint64 milliseconds)
+{
+    m_lastLoadMs = milliseconds;
+    updateLoadTimeLabel();
+}
+
+void MainWindow::updateLoadTimeLabel()
+{
+    if (!m_loadTimeLabel)
+        return;
+    m_loadTimeLabel->setText(m_lastLoadMs >= 0
+                                 ? tr("Loaded in %1").arg(formatDuration(m_lastLoadMs))
+                                 : QString());
 }
 
 void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormatId)
@@ -1295,6 +1405,13 @@ void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormat
     QString error;
     bool timeMergeDisabled = false;
 
+    // Measure the whole open (parsing/indexing plus model attachment) for the
+    // status bar label (REQ-UI-15). The "load the complete file?" dialog is
+    // excluded: it is user think time, not load time.
+    QElapsedTimer loadTimer;
+    loadTimer.start();
+    qint64 dialogMs = 0;
+
     QApplication::setOverrideCursor(Qt::WaitCursor);
     const bool ok = openWith(m_settings->maxLinesPerFile(), &provider, &error, &timeMergeDisabled);
     QApplication::restoreOverrideCursor();
@@ -1309,12 +1426,15 @@ void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormat
 
     if (wasTruncated) {
         const int limit = m_settings->maxLinesPerFile();
+        QElapsedTimer dialogTimer;
+        dialogTimer.start();
         const auto answer = QMessageBox::question(
             this, tr("Large file"),
             tr("The file contains more than %1 lines; only the first %1 lines are loaded.\n\n"
                "Load the complete file now?")
                 .arg(limit),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        dialogMs += dialogTimer.elapsed();
         if (answer == QMessageBox::Yes) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
             EntryProviderPtr fullProvider;
@@ -1337,6 +1457,7 @@ void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormat
         m_settings->addRecentFile(file);
     updateRecentFilesMenu();
     setProvider(provider, paths.size() == 1 ? paths.first() : QString());
+    setLoadTime(loadTimer.elapsed() - dialogMs);
 }
 
 void MainWindow::reportError(const QString &message)
@@ -1398,6 +1519,23 @@ void MainWindow::writeLayout(QTextStream &out) const
     describe("central", centralWidget());
     describe("content", m_content);
     describe("filterPanel", m_filterPanel);
+    // Collapse toggle diagnostics (REQ-UI-13): the arrow lives in the title
+    // row and is placed without a layout, so its geometry is worth checking.
+    if (QToolButton *toggle = m_filterPanel->findChild<QToolButton *>(
+            QStringLiteral("filterCollapseButton"))) {
+        const QPoint global = toggle->mapToGlobal(QPoint(0, 0));
+        out << QStringLiteral("filterCollapse collapsed=%1 button=%2,%3 %4x%5 global=%6,%7 "
+                              "visRegionWidth=%8\n")
+                   .arg(m_filterPanel->isCollapsed() ? 1 : 0)
+                   .arg(toggle->x())
+                   .arg(toggle->y())
+                   .arg(toggle->width())
+                   .arg(toggle->height())
+                   .arg(global.x())
+                   .arg(global.y())
+                   .arg(toggle->visibleRegion().isEmpty()
+                            ? 0 : toggle->visibleRegion().boundingRect().width());
+    }
     describe("splitter", m_splitter);
     describe("logGroup", m_logGroup);
     describe("table", m_tableView);
