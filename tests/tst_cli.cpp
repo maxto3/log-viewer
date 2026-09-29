@@ -16,6 +16,7 @@ private slots:
     void languageForms();
     void formatOptions();
     void monitorAndDemo();
+    void associationOptions();
     void unknownOption();
     void missingValue();
     void unsupportedLanguage();
@@ -88,6 +89,43 @@ void TestCliParser::monitorAndDemo()
     QVERIFY(options.monitor);
     QVERIFY(options.demo);
     QCOMPARE(options.files.size(), 1);
+}
+
+void TestCliParser::associationOptions()
+{
+    CliOptions options = CliParser::parse({QStringLiteral("--register-association")});
+    QVERIFY(options.error.isEmpty());
+    QVERIFY(options.registerAssociation);
+    QVERIFY(!options.unregisterAssociation);
+    QVERIFY(!options.forceAssociation);
+
+    options = CliParser::parse({QStringLiteral("--unregister-association")});
+    QVERIFY(options.error.isEmpty());
+    QVERIFY(options.unregisterAssociation);
+
+    options = CliParser::parse({QStringLiteral("--register-association"),
+                                QStringLiteral("--force"), QStringLiteral("--lang"),
+                                QStringLiteral("zh_CN")});
+    QVERIFY(options.error.isEmpty());
+    QVERIFY(options.forceAssociation);
+    QCOMPARE(options.language, QStringLiteral("zh_CN"));
+
+    // Combinations that make no sense are usage errors (REQ-CLI-10).
+    QVERIFY(!CliParser::parse({QStringLiteral("--register-association"),
+                               QStringLiteral("--unregister-association")})
+                 .error.isEmpty());
+    QVERIFY(!CliParser::parse({QStringLiteral("--force")}).error.isEmpty());
+    QVERIFY(!CliParser::parse({QStringLiteral("--register-association"), QStringLiteral("a.log")})
+                 .error.isEmpty());
+
+    // Documented in --help and in the confirmation the CLI prints.
+    QVERIFY(CliParser::usageText().contains(QStringLiteral("--register-association")));
+    QVERIFY(CliParser::usageText().contains(QStringLiteral("--unregister-association")));
+    QVERIFY(CliParser::associationRegisteredText(QStringLiteral(".log"),
+                                                 QStringLiteral("C:\\log-viewer\\log-viewer.exe"))
+                .contains(QStringLiteral("log-viewer.exe")));
+    QVERIFY(CliParser::associationRemovedText(QStringLiteral(".log"))
+                .contains(QStringLiteral(".log")));
 }
 
 void TestCliParser::unknownOption()

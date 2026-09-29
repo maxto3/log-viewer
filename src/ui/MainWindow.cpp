@@ -10,6 +10,7 @@
 #include "core/LogWatcher.h"
 #include "core/Matcher.h"
 #include "highlight/HighlightTheme.h"
+#include "platform/FileAssociation.h"
 #include "ui/AboutDialog.h"
 #include "ui/DemoData.h"
 #include "ui/DetailPane.h"
@@ -21,6 +22,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QColorDialog>
+#include <QCoreApplication>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QElapsedTimer>
@@ -274,6 +276,13 @@ void MainWindow::createActions()
 
     m_aboutAction = new QAction(this);
     connect(m_aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
+
+    // Settings ▸ File Association (REQ-UI-16): the check mark is only a mirror
+    // of the registry, it is refreshed from the registry after every change.
+    m_associateAction = new QAction(this);
+    m_associateAction->setCheckable(true);
+    m_associateAction->setEnabled(FileAssociation::isSupported());
+    connect(m_associateAction, &QAction::triggered, this, &MainWindow::onToggleAssociation);
 }
 
 void MainWindow::createMenus()
@@ -323,6 +332,12 @@ void MainWindow::createMenus()
     m_syntaxMenu->addAction(m_syntaxLightAction);
     m_appearanceMenu->addSeparator();
     m_appearanceMenu->addAction(m_resetAllAction);
+
+    // Per-user file association (REQ-UI-16). The check mark mirrors the
+    // registry, so it is re-read every time the submenu is opened.
+    m_fileAssociationMenu = m_settingsMenu->addMenu(QString());
+    m_fileAssociationMenu->addAction(m_associateAction);
+    connect(m_fileAssociationMenu, &QMenu::aboutToShow, this, &MainWindow::syncAssociationAction);
 
     // Full screen is a view mode, but it lives in the Settings menu
     // (REQ-UI-14) next to the other window level switches.
@@ -528,6 +543,15 @@ void MainWindow::retranslateUi()
     m_fullScreenAction->setText(tr("Full Screen"));
     m_fullScreenAction->setToolTip(
         tr("Collapse the search and filter panel and use the whole screen (F11; leave with Esc)"));
+
+    m_fileAssociationMenu->setTitle(tr("File Association"));
+    m_associateAction->setText(tr("Associate .log Files"));
+    m_associateAction->setToolTip(
+        FileAssociation::isSupported()
+            ? tr("Register .log files for the current user so that double-clicking one opens this "
+                 "executable. Uncheck to remove the association again.")
+            : FileAssociation::unsupportedText());
+    syncAssociationAction();
 
     m_aboutAction->setText(tr("About"));
     m_logGroup->setTitle(tr("Log"));
@@ -865,6 +889,48 @@ void MainWindow::onAbout()
 {
     AboutDialog dialog(this);
     dialog.exec();
+}
+
+void MainWindow::onToggleAssociation(bool checked)
+{
+    const QString extension = FileAssociation::defaultExtension();
+    const QString exePath = QCoreApplication::applicationFilePath();
+
+    if (checked) {
+        const FileAssociation::Result result =
+            FileAssociation::registerForCurrentUser(extension, exePath);
+        if (!result.ok) {
+            QMessageBox::warning(this, tr("File Association"), result.error);
+        } else {
+            QString text = tr("Double-clicking a %1 file now opens:\n%2").arg(extension, exePath);
+            for (const QString &warning : result.warnings)
+                text += QLatin1Char('\n') + warning;
+            QMessageBox::information(this, tr("File Association"), text);
+        }
+    } else {
+        const FileAssociation::Result result = FileAssociation::unregisterForCurrentUser(extension);
+        if (!result.ok) {
+            QMessageBox::warning(this, tr("File Association"), result.error);
+        } else {
+            QMessageBox::information(
+                this, tr("File Association"),
+                tr("The %1 association was removed and the previous one restored.").arg(extension));
+        }
+    }
+
+    // The registry is the source of truth: a failed registration must not leave
+    // a check mark behind.
+    syncAssociationAction();
+}
+
+void MainWindow::syncAssociationAction()
+{
+    const bool registered = FileAssociation::isRegisteredForCurrentUser(
+        FileAssociation::defaultExtension(), QCoreApplication::applicationFilePath());
+    if (registered == m_associateAction->isChecked())
+        return;
+    const QSignalBlocker blocker(m_associateAction);
+    m_associateAction->setChecked(registered);
 }
 
 void MainWindow::onCurrentRowChanged(const QModelIndex &current)

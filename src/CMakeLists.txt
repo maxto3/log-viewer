@@ -10,6 +10,8 @@ set(LOGVIEWER_CORE_SOURCES
 
     platform/EncodingBackend.cpp
     platform/EncodingBackend.h
+    platform/FileAssociation.cpp
+    platform/FileAssociation.h
     platform/PlatformInfo.cpp
     platform/PlatformInfo.h
 
@@ -66,6 +68,12 @@ set(LOGVIEWER_CORE_SOURCES
 qt_add_library(logviewer_core STATIC ${LOGVIEWER_CORE_SOURCES})
 target_include_directories(logviewer_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(logviewer_core PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets)
+
+# platform/FileAssociation writes HKCU\Software\Classes through the Win32
+# registry API and pokes Explorer afterwards (REQ-ASSOC-06/08).
+if(WIN32)
+    target_link_libraries(logviewer_core PRIVATE advapi32 shell32)
+endif()
 
 set(LOGVIEWER_UI_SOURCES
     ui/AboutDialog.cpp

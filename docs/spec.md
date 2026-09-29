@@ -211,6 +211,7 @@
 | REQ-UI-13 | 查询与过滤分组框**可折叠为单行**（标题行右侧 `▾`/`▸` 切换按钮）：折叠时只保留分组框标题（约一行高度）、隐藏全部输入行，日志表格获得释放的纵向空间；折叠仅改变可见性——**已生效的 Find / Filter / 级别 / 时间条件继续生效**，输入内容与光标焦点语义不丢失；折叠状态**不跨会话记忆**（重启/重新打开日志后默认展开） | 必须 |
 | REQ-UI-14 | **Settings ▸ Full Screen**（勾选项，快捷键 `F11`）：触发时**自动折叠查询与过滤分组框**并把主窗口切换为全屏；全屏期间用户可手动展开/折叠该分组框；按 `Esc` **退出全屏**（`Esc` 仅在全屏期间被该功能占用，其余场景不受影响），退出时恢复进入全屏前的折叠状态与窗口状态（此前最大化则回到最大化）；全屏状态**不持久化** | 必须 |
 | REQ-UI-15 | 状态栏**左下角**（最左侧的普通指示区）在日志文件打开完成后显示本次打开**花费的时间**，文本形如 `Loaded in 0.35 s`（中文「加载耗时 0.35 s」）；时长**自适应格式**：不足 1 分钟显示秒并保留小数（`0.35 s`、`12.3 s`），1 分钟～1 小时显示 `2 min 5 s`，1 小时及以上显示 `1 h 2 min 5 s`，为 0 的高位分量省略（如 `1 h 5 s`）；计时从打开操作开始到文档就绪，**不包含**「大文件是否继续加载」对话框的等待时长；Refresh 重新打开后更新；关闭文档或载入 `--demo` 演示数据时清除；语言切换后标签随界面重译 | 必须 |
+| REQ-UI-16 | **Settings ▸ File Association ▸ Associate .log Files**（勾选项，Windows 专有）：勾选时以**当前可执行文件路径**注册 `.log` 关联（等价于 `--register-association`）、取消勾选时撤销并还原（等价于 `--unregister-association -Force` 之外的无提示撤销）；勾选状态实时取自注册表（ProgID 的 `shell\open\command` 是否指向本 exe），**程序目录搬迁后关联失效时该状态自动显示为未勾选**，重新勾选即修正为当前路径；失败用对话框显示原因，覆盖他人关联时把备份行为一并提示；非 Windows 上该项禁用并在悬停提示中给出 `xdg-mime` 命令 | 必须 |
 | REQ-UI-05 | **Settings ▸ Appearance** 子菜单：Theme = Light / Dark / Follow system（默认 Light）；Syntax highlighting = Follow theme / VSCode Dark+ / VSCode Light+；Highlight color（Find/Filter 高亮底色与文字色） | 必须 |
 | REQ-UI-06 | **顶级菜单 About**（与 File、Settings 平级，点击直接打开关于对话框）：产品名、版本号、构建信息（Qt 版本、编译器、构建时间、**目标平台**）、许可证说明、开源组件致谢 | 必须 |
 | REQ-UI-07 | 查询与过滤功能集中在一个主界面**分组框**中，位于日志表格分组框**上方** | 必须 |
@@ -241,16 +242,20 @@
 | REQ-CLI-07 | **不做单实例限制**：允许同时运行多个实例，便于并行查看不同日志；不提供单实例开关 | 必须 |
 | REQ-CLI-08 | 命令行打开文件时，界面语言与主题仍遵循设置（`--lang` 除外） | 必须 |
 | REQ-CLI-09 | `--demo`：载入内置演示数据（覆盖各日志级别、超长消息、内嵌 JSON/XML/YAML 片段），用于界面自检与截图，不参与正式功能 | 可选 |
+| REQ-CLI-10 | `--register-association` / `--unregister-association`：把 **`.log`** 关联注册/撤销到**本可执行文件自身**（见 REQ-ASSOC-06/07），成功退出码 0、失败 1（原因写标准错误，不弹 GUI 对话框）；`--force` 覆盖已有的他人关联且不再提示，默认覆盖前会把原值备份下来供撤销还原；非 Windows 上提示改用 `xdg-mime` 并返回 1 | 应该 |
 
 ### REQ-ASSOC 文件关联（双平台）
 
 | 编号 | 需求 | 优先级 |
 | --- | --- | --- |
-| REQ-ASSOC-01 | Windows：提供 `scripts\register-association.ps1`，在 **HKCU**（`HKCU\Software\Classes`）注册 `.log`（以及 `.txt` 可选）→ 应用 ProgID，支持 `-Unregister` 完全撤销；**不要求管理员权限，不修改 HKLM，不劫持系统默认关联** | 应该 |
-| REQ-ASSOC-02 | Windows：注册项必须支持 `"%1"` 参数（双击文件即打开），并出现在"打开方式"列表中 | 必须 |
+| REQ-ASSOC-01 | Windows：在 **HKCU**（`HKCU\Software\Classes`）注册 **`.log` → 应用 ProgID**，并支持完全撤销还原；**只注册 `.log`，不注册 `.txt` 或任何其它扩展名**；**不要求管理员权限，不修改 HKLM，不劫持系统默认关联** | 应该 |
+| REQ-ASSOC-02 | Windows：注册项必须支持 `"%1"` 参数（双击文件即打开），并出现在"打开方式"列表中（`HKCU\Software\Classes\Applications\log-viewer.exe` 带 `FriendlyAppName` 与 `SupportedTypes`） | 必须 |
 | REQ-ASSOC-03 | Linux：提供 `log-viewer.desktop`（`Exec=log-viewer %F`、`Terminal=false`、`MimeType=text/x-log;application/json;text/plain;`）、AppStream metainfo 与 hicolor 主题图标；安装后可通过 `xdg-mime default log-viewer.desktop text/x-log` 设为默认打开方式 | 应该 |
 | REQ-ASSOC-04 | 关联行为必须在文档中说明为**用户可选、可撤销**，并在撤销后恢复系统原状 | 必须 |
 | REQ-ASSOC-05 | 不做静默修改默认程序、不做系统级强制关联 | 必须 |
+| REQ-ASSOC-06 | Windows 的注册逻辑**内置于可执行文件**（`src/platform/FileAssociation`），通过 `--register-association` / `--unregister-association` 调用；**不依赖 PowerShell 脚本**（脚本仅作转发入口，见 REQ-ASSOC-07） | 必须 |
+| REQ-ASSOC-07 | 注册写入的可执行文件路径必须是**程序自身路径**（`QCoreApplication::applicationFilePath()`），因此把整个程序目录解压/搬迁到任意位置（例如 `C:\log-viewer`）后再执行一次注册即正确，无需修改脚本或手工编辑注册表；发行包内附带与 `log-viewer.exe` **同级**的 `register-association.ps1` 转发脚本（`-Unregister` / `-Force` / `-ExePath` 参数保留，默认调用同目录的可执行文件） | 必须 |
+| REQ-ASSOC-08 | 注册项必须完整：ProgID（默认值、`FriendlyTypeName`、`DefaultIcon`、`shell\open\command`）、`.log\OpenWithProgids`、`Applications\log-viewer.exe`（`FriendlyAppName`、`SupportedTypes`、`shell\open\command`）与扩展名原值备份键；`-Unregister` 必须删除上述全部键、清空 `OpenWithProgids` 下本程序项并还原扩展名原值 | 必须 |
 
 ### REQ-PLAT 平台与可移植性（Windows / Linux）
 
@@ -349,6 +354,7 @@
 | AC-17 | `cpack -G DEB` 产出 `.deb`，安装后 `log-viewer`、`.desktop`、MIME、AppStream、翻译文件就位 | 命令行验证 | **否（本机不验证；由用户在 Debian 原生环境验证）** |
 | AC-18 | CPack 配置与 `packaging/linux/` 资源文件存在且语法正确（`cmake --install --dry-run` 级别的静态检查） | 静态检查 | 是（静态） |
 | AC-19 | 打开日志文件后状态栏左下角显示 `Loaded in …`，时长随量级自适应（秒 / 分+秒 / 时+分+秒）；关闭文档后清除 | 单元测试（格式化）+ UI 用例 | 是 |
+| AC-20 | 把发行包解压到任意目录（如 `C:\log-viewer`）后：执行 `log-viewer.exe --register-association` 或同目录 `register-association.ps1`，双击 `.log` 用本应用打开；整体搬移到新目录后 Settings ▸ File Association 显示为未勾选，重新勾选后关联指向新路径；`--unregister-association` 后 `HKCU\Software\Classes` 相关键完全移除且扩展名原值被还原 | 命令行验证 + 注册表核对 + UI 用例 | 是 |
 
 ## 9. 开放问题与建议项
 
@@ -364,7 +370,7 @@
 | OPEN-08 | Linux 构建依赖清单 | **已确认：按现设计**：`build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools qt6-l10n-tools libgl1-mesa-dev` | 已决定（待用户实测） |
 | OPEN-09 | musl 环境（Alpine）不支持 GB18030 | **已探索并采纳建议**：内置一份紧凑的 GB18030/GBK 解码表（公开映射数据生成，约数十 KB）作为跨平台兜底；候选编码按 GB18030 → Big5 → Shift_JIS → CP1252 做有效性校验。评估过的备选：ICU（体积大，否决）、Qt5Compat QTextCodec（需额外模块且无 ICU 时能力受限，否决） | 已决定（采纳建议） |
 | OPEN-10 | 单实例运行 | **已确认：不做单实例**。允许同时运行多个实例以查看不同日志（REQ-CLI-07 已改写） | 已决定 |
-| OPEN-11 | Windows 是否注册 `.txt` 关联 | **已确认：默认只注册 `.log`**；`.txt` 需显式参数 `-IncludeTxt` | 已决定 |
+| OPEN-11 | Windows 是否注册 `.txt` 关联 | **已废止（依据用户指示）：只注册 `.log`**，`.txt` 及任何其它扩展名都不注册；原 `-IncludeTxt` 参数移除 | 已废止（1.35） |
 | OPEN-12 | 下载依赖（Qt / pip）需要 HTTP 代理 | 本机代理为 `http://localhost:1081`；`scripts/install-qt.ps1` 提供 `-Proxy` 参数（默认取 `HTTPS_PROXY` 环境变量），脚本内同时设置 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY` | 已决定（环境事实） |
 
 ## 10. 修订记录
@@ -378,7 +384,7 @@
 | 1.4 | 2026-09-29 | AI 助手（依据用户反馈） | 取消内容列 1600 px 最大宽度：内容列随窗口按比例伸展并铺满可用像素，最大化时不再出现左右空白；同步更新 REQ-VIS-02 / REQ-VIS-05 |
 | 1.5 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 Settings ▸ Details Pane 子菜单（REQ-UI-11）：Show at Startup 控制打开日志时自动选中第一行并展开详情框；Show on Row Click 关闭时点击行不显示详情框，表格改为完整内容模式（行高自适应、不截断）。同步更新 REQ-TABLE-04 / REQ-DETAIL-01 |
 | 1.6 | 2026-09-29 | AI 助手（缺陷修复） | 修复「启动时显示未勾选时打开日志仍自动弹出详情框」：详情框改为只由显式用户激活（鼠标点击/键盘导航）或 Show at Startup 打开，新增 LogTableView::rowActivatedByUser 信号；REQ-UI-11 补充该语义 |
-| 1.7 | 2026-09-29 | AI 助手（依据用户反馈） | Settings ▸ Details Pane 由两个勾选项简化为单个勾选项 **Always Show Details**（勾选=始终显示，取消=点击行时显示）；撤销上一版引入的「完整内容模式」相关需求表述（REQ-TABLE-04 回退为两行截断 + Enter 展开）；旧设置键 detailsOnStartup/detailsOnRowClick 自动迁移 |
+| 1.7 | 2026-09-29 | AI 助手（依据用户反馈） | Settings ▸ Details Pane 由两个勾选项简化为单个勾选项 **Always Show Details**（勾选=始终显示，取消=始终不显示（点击行也不再展开））；撤销上一版引入的「完整内容模式」相关需求表述（REQ-TABLE-04 回退为两行截断 + Enter 展开）；旧设置键 detailsOnStartup/detailsOnRowClick 自动迁移 |
 | 1.8 | 2026-09-29 | AI 助手（依据用户反馈） | 勾选项更名为 **Show Details Pane**，语义改为开关式：勾选=始终显示，取消=始终不显示（点击行也不再展开）；开启时 Layout 菜单可用、关闭时置灰；设置键改为 view/showDetailsPane 并兼容迁移 alwaysShowDetails / detailsOnStartup / detailsOnRowClick |
 | 1.9 | 2026-09-29 | AI 助手（依据用户反馈） | 详情框消息区改为始终自动折行（WidgetWidth + WrapAtWordBoundaryOrAnywhere），彻底移除横向滚动条；REQ-DETAIL-04 升级为必须并删除 Wrap 开关要求 |
 | 1.10 | 2026-09-29 | AI 助手（缺陷修复） | 实现 Monitor（tail -f）：此前菜单项为占位禁用状态，现支持增量索引追加、智能跟随（底部自动滚动，上滚暂停并显示「新行 N ▼」按钮）、轮转/截断自动重载、级别计数实时刷新、Ctrl+M 快捷键；REQ-MON-01 补充 demo/快捷键约束；测试样本改为「冻结切片 + 活文件结构断言」以适配持续增长的日志文件 |
@@ -406,3 +412,4 @@
 | 1.32 | 2026-09-29 | AI 助手（依据用户反馈） | 查询与过滤分组框新增**折叠为单行**（REQ-UI-13）：标题栏右侧 ▾/▸ 按钮，折叠只隐藏输入行、已生效条件继续生效、不跨会话记忆；Settings 菜单新增 **Full Screen**（REQ-UI-14，F11）：自动折叠查询过滤分组框并全屏，`Esc` 退出全屏并恢复进入前的折叠状态；新增 UI 用例 `filterPanelCollapsesToSingleRow`、`fullScreenCollapsesFilterPanel` |
 | 1.33 | 2026-09-29 | AI 助手（缺陷修复） | 修复「目标列最后一行文本超出单元格边框」：① **完整内容模式的行高原先只按消息列计算**，当其他列（如目标列）需要更多行时行高不足——现改为**覆盖所有可见列**（最高单元格决定；消息列作基准，其余列以 `maxLines+1` 探测，仅超过基准的列完整计算，控制性能开销）；② `LogItemDelegate::drawClampedText()` 的段落裁剪默认 `ReplaceClip`，替换掉单元格裁剪后放行了越界绘制——改用 `Qt::IntersectClip`（REQ-TABLE-04 的"不截断"以不越界为前提）；任意列宽变化都会失效行高缓存并合并为一次延迟重算；新增 UI 用例 `rowHeightCoversTheTallestColumn`（含像素级越界检查） |
 | 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 **REQ-UI-15**：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待时间；Refresh 更新、关闭文档或 `--demo` 清除、随语言切换重译）；新增 `core/DurationFormat` 与 `tst_duration`，UI 用例覆盖标签位置与清除；REQ-UI-09 与 AC-19 同步 |
+| 1.35 | 2026-09-29 | AI 助手（依据用户反馈） | 修复「发行包解压到 `C:\log-viewer` 后注册脚本路径失效」：① 注册逻辑**移入可执行文件**（新增 `src/platform/FileAssociation`，用 Win32 注册表 API 写 HKCU），CLI 新增 `--register-association` / `--unregister-association` / `--force`（REQ-CLI-10、REQ-ASSOC-06），路径取 `applicationFilePath()` 故天然自定位（REQ-ASSOC-07）；② 注册项补齐 `DefaultIcon`、`.log\OpenWithProgids`、`Applications\...\SupportedTypes`（REQ-ASSOC-08）；③ `package.ps1` 把 `register-association.ps1` 复制到包内与 exe 同级，脚本改为转发入口且默认调用同目录 exe；④ 新增 Settings ▸ File Association 勾选项（REQ-UI-16）与 AC-20；⑤ **只注册 `.log`**，移除 `.txt`/`-IncludeTxt` 一整套（OPEN-11 废止）；新增 `tst_association`（纯函数 + 测试专用扩展名的注册/撤销往返） |

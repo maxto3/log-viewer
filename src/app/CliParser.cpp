@@ -32,6 +32,12 @@ CliOptions CliParser::parse(const QStringList &arguments)
             options.monitor = true;
         } else if (argument == QLatin1String("--demo")) {
             options.demo = true;
+        } else if (argument == QLatin1String("--register-association")) {
+            options.registerAssociation = true;
+        } else if (argument == QLatin1String("--unregister-association")) {
+            options.unregisterAssociation = true;
+        } else if (argument == QLatin1String("--force")) {
+            options.forceAssociation = true;
         } else if (argument == QLatin1String("--lang")) {
             pending = QStringLiteral("--lang");
         } else if (argument.startsWith(QLatin1String("--lang="))) {
@@ -58,8 +64,17 @@ CliOptions CliParser::parse(const QStringList &arguments)
         return options;
     }
 
-    if (!options.language.isEmpty() && options.language != QLatin1String("en")
-        && options.language != QLatin1String("zh_CN")) {
+    if (options.registerAssociation && options.unregisterAssociation) {
+        options.error = tr("Options --register-association and --unregister-association cannot be "
+                           "combined.");
+    } else if (options.forceAssociation && !options.registerAssociation) {
+        options.error = tr("Option --force is only valid together with --register-association.");
+    } else if ((options.registerAssociation || options.unregisterAssociation)
+               && !options.files.isEmpty()) {
+        options.error = tr("Options --register-association/--unregister-association cannot be "
+                           "combined with file arguments.");
+    } else if (!options.language.isEmpty() && options.language != QLatin1String("en")
+               && options.language != QLatin1String("zh_CN")) {
         options.error = tr("Unsupported language '%1' (supported: en, zh_CN).").arg(options.language);
     }
     return options;
@@ -80,7 +95,27 @@ QString CliParser::usageText()
                "      --format <id>      Force a log format ('auto' for detection,\n"
                "                         'list' to print the available ids)\n"
                "      --monitor          Enable live monitoring after opening one file\n"
-               "      --demo             Load built-in demo data (UI preview only)\n");
+               "      --demo             Load built-in demo data (UI preview only)\n"
+               "      --register-association\n"
+               "                         Associate .log files with this executable\n"
+               "                         (current user only; undo with the option below)\n"
+               "      --unregister-association\n"
+               "                         Remove the .log association and restore the\n"
+               "                         previous one\n"
+               "      --force            Replace an existing .log association without\n"
+               "                         warning (--register-association only)\n");
+}
+
+QString CliParser::associationRegisteredText(const QString &extension, const QString &exePath)
+{
+    return tr("%1 files now open with:\n%2\nRemove the association with "
+              "--unregister-association.")
+        .arg(extension, exePath);
+}
+
+QString CliParser::associationRemovedText(const QString &extension)
+{
+    return tr("The %1 association was removed and the previous one restored.").arg(extension);
 }
 
 QString CliParser::versionText()

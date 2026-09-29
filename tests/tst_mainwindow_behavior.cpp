@@ -3,6 +3,7 @@
 #include "app/TranslationManager.h"
 #include "core/LogTableModel.h"
 #include "highlight/SnippetTokenizer.h"
+#include "platform/FileAssociation.h"
 #include "ui/DetailPane.h"
 #include "ui/FilterPanel.h"
 #include "ui/LogItemDelegate.h"
@@ -72,6 +73,7 @@ private slots:
     void droppingFilesOpensAndMerges();
     void droppingAFolderIsIgnored();
     void loadTimeLabelShowsOpenDuration();
+    void associationMenuEntryExists();
     void headersFollowLanguageSwitch();
     void resetAllKeepsDefaults();
 
@@ -1355,6 +1357,35 @@ void TestMainWindowBehavior::resetAllKeepsDefaults()
     QVERIFY(!settings->showDetailsPane());
     // Defaults hide the details pane, so the table shows the complete content.
     QVERIFY(window.isFullContentMode());
+}
+
+void TestMainWindowBehavior::associationMenuEntryExists()
+{
+    // REQ-UI-16: Settings ▸ File Association ▸ Associate .log Files. The check
+    // mark mirrors the registry; the test executable is never registered, so it
+    // must start unchecked and no registry write happens in this test.
+    auto settings = makeSettings(QStringLiteral("association"), true);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    QAction *action = window.associateAction();
+    QVERIFY(action != nullptr);
+    QVERIFY(action->isCheckable());
+    QVERIFY(!action->text().isEmpty());
+    QCOMPARE(action->isEnabled(), FileAssociation::isSupported());
+    QVERIFY(!action->isChecked());
+
+    // The action is reachable from the menu bar (inside the Settings menu).
+    bool inMenuBar = false;
+    for (QMenu *menu : window.menuBar()->findChildren<QMenu *>()) {
+        if (menu->actions().contains(action))
+            inMenuBar = true;
+    }
+    QVERIFY(inMenuBar);
+    QVERIFY(!action->toolTip().isEmpty());
 }
 
 QTEST_MAIN(TestMainWindowBehavior)

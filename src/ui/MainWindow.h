@@ -61,6 +61,8 @@ public:
     QAction *fullScreenAction() const { return m_fullScreenAction; }
     /// Status bar label with the duration of the last file open (REQ-UI-15).
     QLabel *loadTimeLabel() const { return m_loadTimeLabel; }
+    /// Settings ▸ File Association action (checkable, REQ-UI-16).
+    QAction *associateAction() const { return m_associateAction; }
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -75,6 +77,9 @@ private slots:
     void onRefresh();
     void onCloseDocument();
     void onAbout();
+    /// Settings ▸ File Association (REQ-UI-16): registers or removes the .log
+    /// association for the current user, then re-reads the real state.
+    void onToggleAssociation(bool checked);
     void onCurrentRowChanged(const QModelIndex &current);
     /// Row activated by the user (click or keyboard navigation).
     void onRowActivatedByUser(int row);
@@ -147,6 +152,9 @@ private:
     /// (only on load; a filter change must not touch the user's selection).
     void updateDocumentUi(bool documentLoaded = false);
     void updateRecentFilesMenu();
+    /// Re-reads the .log association from the registry so the menu entry shows
+    /// whether the association currently points at this executable.
+    void syncAssociationAction();
     void reportError(const QString &message);
     void showDetailPane();
     /// Stores the duration of the last document open and refreshes the status
@@ -212,6 +220,8 @@ private:
     QMenu *m_appearanceMenu = nullptr;
     QMenu *m_syntaxMenu = nullptr;
     QMenu *m_themeMenu = nullptr;
+    /// Settings ▸ File Association (REQ-UI-16).
+    QMenu *m_fileAssociationMenu = nullptr;
 
     QAction *m_openAction = nullptr;
     QAction *m_refreshAction = nullptr;
@@ -264,6 +274,8 @@ private:
     QActionGroup *m_syntaxGroup = nullptr;
     QAction *m_resetAllAction = nullptr;
     QAction *m_aboutAction = nullptr;
+    /// Checkable "Associate .log Files" entry (REQ-UI-16).
+    QAction *m_associateAction = nullptr;
 
     /// 1-based ordinal of the current Find match (0 = none yet).
     int m_findOrdinal = 0;

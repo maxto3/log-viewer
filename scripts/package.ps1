@@ -86,6 +86,11 @@ foreach ($doc in 'README.md', 'README.zh_CN.md') {
 }
 Copy-Item (Join-Path $repoRoot 'LICENSE') $stageDir -ErrorAction SilentlyContinue
 
+# The association helper sits next to the executable it registers, so the
+# unpacked folder can be moved anywhere and the script still works
+# (REQ-ASSOC-07). It is a thin wrapper around --register-association.
+Copy-Item (Join-Path $PSScriptRoot 'register-association.ps1') $stageDir
+
 # Compress the staging folder itself, so the archive has exactly one top-level
 # folder ("log-viewer-<version>") with the executable and all dependencies.
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
@@ -102,5 +107,6 @@ if (Test-Path $legacyDir -PathType Container) {
 
 $size = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
 Write-Host "Package ready: $zipPath ($size MB)"
-Write-Host "Archive layout: $packageName\log-viewer.exe with the Qt runtime, plugins, translations and documentation."
+Write-Host "Archive layout: $packageName\log-viewer.exe with the Qt runtime, plugins, translations, documentation and register-association.ps1."
+Write-Host "To associate .log files: $packageName\log-viewer.exe --register-association (or the included script); undo with --unregister-association."
 Write-Host "Note: the target machine needs the Visual C++ runtime (or run vc_redist.x64.exe)."

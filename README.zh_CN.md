@@ -56,6 +56,10 @@ cd log-viewer
 # 6) 可选：把 .log 关联到本程序（仅当前用户，可撤销）
 .\scripts\register-association.ps1
 .\scripts\register-association.ps1 -Unregister
+# 解压发行包后（例如解压到 C:\log-viewer），直接用可执行文件或随包附带的脚本，
+# 两者注册的都是那一份程序：
+#   C:\log-viewer\log-viewer.exe --register-association
+#   C:\log-viewer\log-viewer.exe --unregister-association
 ```
 
 构建产物位于 `build\windows-msvc-qt6-release\bin\log-viewer.exe`；该目录已由
@@ -103,9 +107,15 @@ log-viewer [选项] [日志文件...]
       --format <id>      强制日志格式（auto 自动探测，list 列出可用 id）
       --monitor          打开单个文件后立即启用实时监控
       --demo             载入内置演示数据（仅用于界面预览）
+      --register-association
+                         把 .log 文件关联到本程序（仅当前用户）
+      --unregister-association
+                         移除 .log 关联并还原原有的关联
+      --force            覆盖已有的 .log 关联且不再提示
+                         （仅与 --register-association 同用）
 ```
 
-退出码：`0` 正常、`1` 文件错误、`2` 参数错误。
+退出码：`0` 正常、`1` 文件错误（关联注册失败也是 1）、`2` 参数错误。
 
 ## 快捷键与鼠标
 
@@ -137,6 +147,7 @@ log-viewer [选项] [日志文件...]
   * **详情框** — *显示详情框*：勾选=始终显示（打开日志自动选中第一条），取消=始终不显示；
     **布局** 子菜单选择详情框位置（右侧或底部）
   * **外观** — 主题（浅色/深色/跟随系统）、语法高亮主题（跟随主题 / VSCode Dark+ / Light+）、高亮颜色、重置全部设置
+  * **文件关联** — *关联 .log 文件*：勾选项，为当前用户注册**正在运行的这一份可执行文件**（`HKCU\Software\Classes`），双击 `.log` 即用本程序打开；取消勾选即移除关联并还原原来的打开方式。勾选状态实时读自注册表，因此把程序目录搬走后会显示为未勾选，重新勾选一次即修正（不需要改脚本或手动改注册表）。只动 `.log` 一个扩展名——若该扩展名此前被“打开方式 ▸ 始终使用此应用”固定过（`UserChoice`），需在那里确认一次；本程序不会去改写那个受保护键
   * **全屏** — 勾选项，`F11`：自动折叠查找与过滤分组框并全屏显示；`Esc` 退出全屏并恢复分组框状态
 * **列(Columns)** — 位于设置与关于之间的顶级菜单：按当前文档的列动态生成勾选项，取消勾选即隐藏该列（选择按文档记忆）；行号列始终显示；*显示全部列* 一键恢复
 * **关于(About)** — 与文件、设置平级的顶级菜单项：版本、构建信息、许可证

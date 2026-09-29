@@ -98,7 +98,7 @@ log-viewer/
 ├─ scripts/
 │   ├─ install-qt.ps1             # Windows：aqtinstall 下载 Qt 6.8.3 msvc2022_64
 │   ├─ build.ps1  test.ps1  run.ps1  package.ps1      # Windows（package.ps1→dist\）
-│   ├─ register-association.ps1   # Windows：HKCU 文件关联（-Unregister 撤销）
+│   ├─ register-association.ps1   # Windows：文件关联的转发脚本（也随发行包与 exe 同级）
 │   ├─ build.sh   test.sh     run.sh  package-deb.sh  # Linux（未验证）
 │   └─ register-association.sh    # Linux：xdg-mime 引导（未验证）
 ├─ packaging/
@@ -120,7 +120,7 @@ log-viewer/
 │  ├─ platform/
 │  │   ├─ PlatformInfo.{h,cpp}            # 平台名、默认等宽字体、配置目录
 │  │   ├─ EncodingBackend.{h,cpp}         # 统一接口 + 两套实现（#if 隔离）
-│  │   ├─ FileAssociation.{h,cpp}         # 注册状态查询 / 平台引导信息
+│  │   ├─ FileAssociation.{h,cpp}         # HKCU 注册/撤销/状态查询（唯一写注册表处）
 │  │   └─ ConsoleAttach.{h,cpp}           # Windows 控制台附着（空实现于 Linux）
 │  ├─ core/
 │  │   ├─ LogLevel.{h,cpp}  LogEntry.h  LogFormat.{h,cpp}
@@ -380,14 +380,14 @@ public:
 | 界面字体 | 系统 UI 字体（Segoe UI） | 系统 UI 字体（Noto Sans / Cantarell 等） | `QFontDatabase::systemFont(GeneralFont)` |
 | 文件监视 | `QFileSystemWatcher`（ReadDirectoryChangesW）+ 轮询兜底 | `QFileSystemWatcher`（inotify）+ 轮询兜底（watch 数受限时仍可用） | `LogWatcher`（无平台宏，仅配置差异） |
 | 控制台输出 | GUI 子系统需 `AttachConsole` 才能打印 `--help/--version` | 直接写 stdout/stderr | `ConsoleAttach` |
-| 文件关联 | PowerShell 脚本写 `HKCU\Software\Classes`（可撤销） | `.desktop` + MIME XML + `xdg-mime`（随 install/.deb） | `FileAssociation` + `packaging/` |
+| 文件关联 | 可执行文件自身写 `HKCU\Software\Classes`（`--register-association` / `--unregister-association`，路径取自 `applicationFilePath()`） | `.desktop` + MIME XML + `xdg-mime`（随 install/.deb） | `FileAssociation` + `packaging/` |
 | 打包 | `windeployqt` → `dist\` 便携目录 | CPack DEB + `install` 规则 | `scripts/`、`packaging/` |
 | 行尾 | 导出默认 CRLF | 导出默认 LF | 导出模块按 `QOperatingSystemVersion` 或提供开关（可强制 LF） |
 | 路径分隔符 | `\` | `/` | 一律 `QDir`/`QFileInfo`，禁止字面量（CON-9） |
 | 文件名大小写 | 不敏感 | 敏感 | 格式探测与扩展名映射一律大小写不敏感 |
 | DPI / 显示后端 | 系统缩放 | X11 / Wayland 自适应 | Qt 6 自动处理（不写平台代码） |
 
-> 本节实施对应需求：REQ-PLAT-01…10（可移植性）、REQ-CLI-01…08（命令行）、REQ-ASSOC-01…05（文件关联）、CON-9…CON-12（约束）。
+> 本节实施对应需求：REQ-PLAT-01…10（可移植性）、REQ-CLI-01…10（命令行）、REQ-ASSOC-01…08（文件关联）、CON-9…CON-12（约束）。
 
 ## 5. 高亮引擎
 
@@ -655,19 +655,30 @@ Options:
 # 5) 打包便携目录（windeployqt + 中文 .qm + 图标）
 .\scripts\package.ps1 -Config Release   # → dist\log-viewer.exe
 
-# 6) 文件关联（可选，HKCU，可撤销）
-.\scripts\register-association.ps1                 # 注册 .log
-.\scripts\register-association.ps1 -Unregister     # 完全撤销
-.\scripts\register-association.ps1 -IncludeTxt     # 可选注册 .txt（OPEN-11）
+# 6) 文件关联（可选，HKCU，只注册 .log，可撤销）——真正干活的是可执行文件自己
+.\scripts\register-association.ps1                 # 转发到 <exe> --register-association
+.\scripts\register-association.ps1 -Unregister     # 完全撤销并还原原值
+# 解压发行包后（可解压到任意目录，例如 C:\log-viewer）直接调用 exe，无需脚本：
+#   C:\log-viewer\log-viewer.exe --register-association
 ```
 
-注册表布局（HKCU，无需管理员）：
+注册表布局（HKCU，无需管理员；实现见 `src/platform/FileAssociation.cpp`）：
 
 ```
-HKCU\Software\Classes\LogViewer.log\shell\open\command = "<abs>\log-viewer.exe" "%1"
-HKCU\Software\Classes\.log                             = "LogViewer.log"   (仅当不存在用户既有值时)
+HKCU\Software\Classes\LogViewer.log                      = "Log file"
+HKCU\Software\Classes\LogViewer.log\FriendlyTypeName      = "Log File"
+HKCU\Software\Classes\LogViewer.log\DefaultIcon           = "<abs>\log-viewer.exe",0
+HKCU\Software\Classes\LogViewer.log\shell\open\command    = "<abs>\log-viewer.exe" "%1"
+HKCU\Software\Classes\.log                                = "LogViewer.log"
+HKCU\Software\Classes\.log\OpenWithProgids\LogViewer.log  = (REG_NONE)
+HKCU\Software\Classes\LogViewer.Backup\.log               = 覆盖前的原值（撤销时还原）
 HKCU\Software\Classes\Applications\log-viewer.exe\...  = 提供"打开方式"入口
 ```
+
+> `<abs>` 取自 `QCoreApplication::applicationFilePath()`，所以程序目录可任意搬迁，
+> 搬完后重新执行一次注册或勾选一次菜单即可修正；UI 入口为 Settings ▸ File Association
+> （REQ-UI-16）。已存在他人关联时先写入 `LogViewer.Backup`，撤销时自动还原；
+> `UserChoice`（“始终使用此应用”写入的受保护键）不碰，必要时由用户在系统设置里确认一次。
 
 ### 9.2 Linux（源码级支持，v1 不验证）
 
@@ -813,6 +824,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 过滤面板类拆分 | FindPanel / SearchFilterPanel / LevelFilterBar / TimeRangePanel 四个类 | 单一 `FilterPanel` 类 | M1 控件数量有限，拆分留待 M3 接入引擎时按需进行 |
 | 状态栏 | `StatusBarWidget` 独立类 | 内联在 `MainWindow` | 四个 QLabel（左下耗时标签 + 右侧文件名/统计/Monitor），耗时文本由 `core/DurationFormat` 生成，无需独立类 |
 | M2 内容提前 | 仅 M1 骨架 | 同时落地了 `LineIndex`、`LogSource`、`tracing`/`generic` 解析器、`LogTableModel`、表头样式、截断与复制交互、详情面板 | 让 M1 可用真实日志验收，而不是只能看空壳界面 |
+| 文件关联实现位置 | `FileAssociation` 只做“注册状态查询 / 平台引导信息”，注册由 PowerShell 脚本完成 | 注册逻辑全部在 `FileAssociation` 内（Win32 注册表 API + `SHChangeNotify`），脚本退化为转发入口，UI 提供勾选项 | 发行包解压到任意目录后原脚本的仓库相对路径失效（spec 1.35 / REQ-ASSOC-06/07）：只有可执行文件自身知道自己的位置 |
 
 ### 16.3 开发辅助工具（已实现）
 
@@ -852,6 +864,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | M6 打包 | `scripts/package.ps1` 生成便携目录（exe + Qt DLL/插件/翻译 + 文档，约 31 MB）；`scripts/register-association.ps1`（HKCU、可撤销、默认仅 `.log`）；Linux 侧 `packaging/linux/`（.desktop、AppStream、hicolor 图标、CPack DEB 配置）与 `scripts/*.sh`（build/test/run/package-deb/register-association） | 便携目录已实际运行验证（`--version`、打开真实日志 17958 条）；Linux 侧为静态交付（REQ-PLAT-10） |
 | M6 文档 | `README.md`（英文）与 `README.zh_CN.md`（中文）：功能表、双平台构建/运行/打包、命令行、快捷键、菜单、设置位置、目录结构；`LICENSE`（MIT） | 已入库 |
 | UI 折叠与全屏 | 查询与过滤分组框可折叠为标题单行（REQ-UI-13）；Settings ▸ Full Screen（REQ-UI-14，F11）进入全屏时自动折叠该分组框，`Esc` 退出全屏并恢复进入前的折叠状态与最大化状态；关闭窗口时不保存全屏几何；两者均不写入设置 | `tst_mainwindow_behavior` 新增 2 个用例：折叠高度约为展开的一半且表格获得空间、条件在折叠后继续生效；F11 / Esc 往返、折叠状态恢复与最大化往返 |
+| 文件关联便携化（spec 1.35） | `src/platform/FileAssociation`：Win32 注册表 API 写 HKCU（ProgID + DefaultIcon + OpenWithProgids + Applications\\SupportedTypes + 原值备份），`SHChangeNotify` 立即生效；CLI `--register-association` / `--unregister-association` / `--force`（退出码 0/1）；`register-association.ps1` 退化为转发脚本并由 `package.ps1` 复制到包内与 exe 同级；Settings ▸ File Association 勾选项实时读注册表；只注册 `.log` | `tst_association`（纯函数 + 测试专用扩展名 `.lvtest` 的注册/撤销往返）；`tst_cli` 覆盖新参数与互斥；手工 `reg query` 核对注册表布局 |
 
 **尚未完成（诚实记录）**
 

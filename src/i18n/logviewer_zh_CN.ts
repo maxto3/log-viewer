@@ -38,6 +38,14 @@ Options:
                          &apos;list&apos; to print the available ids)
       --monitor          Enable live monitoring after opening one file
       --demo             Load built-in demo data (UI preview only)
+      --register-association
+                         Associate .log files with this executable
+                         (current user only; undo with the option below)
+      --unregister-association
+                         Remove the .log association and restore the
+                         previous one
+      --force            Replace an existing .log association without
+                         warning (--register-association only)
 </source>
         <translation>用法：log-viewer [选项] [日志文件...]
 
@@ -51,12 +59,48 @@ Options:
                          list 列出可用的格式 id）
       --monitor          打开单个文件后立即启用实时监控
       --demo             载入内置演示数据（仅用于界面预览）
+      --register-association
+                         把 .log 文件关联到本程序的当前用户
+                         （仅当前用户；用下一条选项撤销）
+      --unregister-association
+                         移除 .log 关联并还原原有的关联
+      --force            覆盖已有的 .log 关联且不再提示
+                         （仅与 --register-association 同用）
 </translation>
     </message>
     <message>
         <location filename="../app/CliParser.cpp" line="99"/>
         <source>Available log formats:</source>
         <translation>可用的日志格式：</translation>
+    </message>
+    <message>
+        <location filename="../app/CliParser.cpp"/>
+        <source>Options --register-association and --unregister-association cannot be combined.</source>
+        <translation>选项 --register-association 与 --unregister-association 不能同时使用。</translation>
+    </message>
+    <message>
+        <location filename="../app/CliParser.cpp"/>
+        <source>Option --force is only valid together with --register-association.</source>
+        <translation>选项 --force 只能与 --register-association 一起使用。</translation>
+    </message>
+    <message>
+        <location filename="../app/CliParser.cpp"/>
+        <source>Options --register-association/--unregister-association cannot be combined with file arguments.</source>
+        <translation>选项 --register-association/--unregister-association 不能与文件参数同时使用。</translation>
+    </message>
+    <message>
+        <location filename="../app/CliParser.cpp"/>
+        <source>%1 files now open with:
+%2
+Remove the association with --unregister-association.</source>
+        <translation>%1 文件现在用以下程序打开：
+%2
+可用 --unregister-association 取消关联。</translation>
+    </message>
+    <message>
+        <location filename="../app/CliParser.cpp"/>
+        <source>The %1 association was removed and the previous one restored.</source>
+        <translation>已移除 %1 关联并还原原有的关联。</translation>
     </message>
 </context>
 <context>
@@ -156,6 +200,49 @@ Options:
         <location filename="../core/DurationFormat.cpp" line="46"/>
         <source>%1 min</source>
         <translation>%1 分</translation>
+    </message>
+</context>
+<context>
+    <name>FileAssociation</name>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>Windows registry access failed (error %1).</source>
+        <translation>访问 Windows 注册表失败（错误 %1）。</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>File association is only available on Windows. On Linux use &quot;xdg-mime default log-viewer.desktop text/x-log&quot; instead.</source>
+        <translation>文件关联仅在 Windows 上可用。Linux 下请改用 &quot;xdg-mime default log-viewer.desktop text/x-log&quot;。</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>&apos;%1&apos; is not a file extension.</source>
+        <translation>“%1”不是有效的文件扩展名。</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>Executable not found: %1</source>
+        <translation>找不到可执行文件：%1</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>%1 currently opens with %2. That value was backed up and is restored when the association is removed.</source>
+        <translation>%1 目前由 %2 打开。该值已被备份，取消关联时会自动还原。</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>Log file</source>
+        <translation>日志文件</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>Log File</source>
+        <translation>日志文件</translation>
+    </message>
+    <message>
+        <location filename="../platform/FileAssociation.cpp"/>
+        <source>Log Viewer</source>
+        <translation>Log Viewer</translation>
     </message>
 </context>
 <context>
@@ -885,6 +972,33 @@ Load the complete file now?</source>
         <location filename="../ui/MainWindow.cpp" line="1354"/>
         <source>Loaded in %1</source>
         <translation>加载耗时 %1</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>File Association</source>
+        <translation>文件关联</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Associate .log Files</source>
+        <translation>关联 .log 文件</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Register .log files for the current user so that double-clicking one opens this executable. Uncheck to remove the association again.</source>
+        <translation>为当前用户注册 .log 文件关联，双击 .log 文件即用本程序打开。取消勾选即可移除关联。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Double-clicking a %1 file now opens:
+%2</source>
+        <translation>现在双击 %1 文件将用以下程序打开：
+%2</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>The %1 association was removed and the previous one restored.</source>
+        <translation>已移除 %1 关联并还原原有的关联。</translation>
     </message>
 </context>
 </TS>

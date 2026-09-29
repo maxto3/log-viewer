@@ -56,8 +56,12 @@ cd log-viewer
 .\scripts\package.ps1 -Config Release                    # -> dist\log-viewer-<version>-win64.zip
 
 # 6) optional: associate .log files with Log Viewer (current user only, reversible)
-.\scripts\register-association.ps1
-.\scripts\register-association.ps1 -Unregister
+.\scripts\register-association.ps1                    # from a checkout
+.\scripts\register-association.ps1 -Unregister        # undo, restores the old handler
+# after unpacking the release zip (e.g. into C:\log-viewer) use the executable
+# itself or the script shipped next to it — both register that very copy:
+#   C:\log-viewer\log-viewer.exe --register-association
+#   C:\log-viewer\log-viewer.exe --unregister-association
 ```
 
 The build output lives in `build\windows-msvc-qt6-release\bin\log-viewer.exe`.
@@ -108,9 +112,17 @@ log-viewer [options] [files...]
       --format <id>      Force a log format ('auto' to detect, 'list' to print)
       --monitor          Enable live monitoring after opening one file
       --demo             Load built-in demo data (UI preview only)
+      --register-association
+                         Associate .log files with this executable
+                         (current user only; undo with the option below)
+      --unregister-association
+                         Remove the .log association and restore the
+                         previous one
+      --force            Replace an existing .log association without warning
+                         (--register-association only)
 ```
 
-Exit codes: `0` success, `1` file error, `2` usage error.
+Exit codes: `0` success, `1` file error (also a failed registration), `2` usage error.
 
 ## Keyboard and mouse
 
@@ -145,6 +157,15 @@ Exit codes: `0` success, `1` file error, `2` usage error.
     submenu selects the pane position (right or bottom)
   * **Appearance** — theme (light/dark/follow system), syntax highlighting theme
     (follow theme / VSCode Dark+ / Light+), highlight colour, reset all settings
+  * **File Association** — *Associate .log Files*: checkable, registers the
+    running executable for the current user (`HKCU\Software\Classes`) so that
+    double-clicking a `.log` file opens it in Log Viewer; unchecking removes the
+    association and restores the previous handler. The check mark is read back
+    from the registry, so after moving the program folder it shows unchecked
+    until you tick it again (nothing else has to be edited). Only `.log` is
+    touched — if Windows already pins the extension through
+    *Open with ▸ Always use this app* (`UserChoice`), confirm it once there; the
+    tool never rewrites that protected key
   * **Full Screen** — checkable, `F11`: collapses the search & filter panel and
     shows the window full screen; `Esc` leaves full screen and restores the panel
 * **Columns** — top level menu between Settings and About: one checkable item per

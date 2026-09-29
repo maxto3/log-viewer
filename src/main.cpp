@@ -2,6 +2,7 @@
 #include "app/SettingsStore.h"
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
+#include "platform/FileAssociation.h"
 #include "ui/MainWindow.h"
 
 #include <QApplication>
@@ -91,6 +92,31 @@ int main(int argc, char *argv[])
 
     const QString language = options.language.isEmpty() ? settings.language() : options.language;
     translations.setLanguage(language);
+
+    // File association (REQ-ASSOC-06/07): the registry always points at this
+    // executable, so the command works from any unpack directory. Console-only
+    // operation: no window is created and the exit code reports the outcome.
+    if (options.registerAssociation || options.unregisterAssociation) {
+        const QString extension = lv::FileAssociation::defaultExtension();
+        const lv::FileAssociation::Result result = options.registerAssociation
+            ? lv::FileAssociation::registerForCurrentUser(
+                  extension, QCoreApplication::applicationFilePath(), options.forceAssociation)
+            : lv::FileAssociation::unregisterForCurrentUser(extension);
+        for (const QString &warning : result.warnings)
+            writeLine(warning, true);
+        if (!result.ok) {
+            writeLine(result.error, true);
+            return 1;
+        }
+        // The executable path is what the registry now points at; show the same
+        // canonical form that was written (long path, native separators).
+        const QString displayPath = lv::FileAssociation::canonicalExePath(
+            QCoreApplication::applicationFilePath());
+        writeLine(options.registerAssociation
+                      ? lv::CliParser::associationRegisteredText(extension, displayPath)
+                      : lv::CliParser::associationRemovedText(extension));
+        return 0;
+    }
 
     if (options.listFormats) {
         writeLine(lv::CliParser::formatListText());
