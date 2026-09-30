@@ -38,6 +38,27 @@
 
 using namespace lv;
 
+namespace {
+
+/// Leaving full screen is asynchronous on Wayland: the compositor confirms the
+/// state change, and an exit request sent immediately after entering can be
+/// followed by the compositor's full screen configure. Retry Esc until the exit
+/// sticks; the extra key clicks are harmless because the shortcut is disabled
+/// while the window is not full screen.
+bool leaveFullScreen(MainWindow &window)
+{
+    for (int attempt = 0; attempt < 10; ++attempt) {
+        QWidget *focus = window.focusWidget() ? window.focusWidget() : &window;
+        QTest::keyClick(focus, Qt::Key_Escape);
+        QTest::qWait(50);
+        if (!window.isFullScreen())
+            return true;
+    }
+    return false;
+}
+
+} // namespace
+
 /// Behaviour tests for Settings ▸ Details Pane ▸ "Show Details Pane"
 /// (spec.md REQ-UI-11): checked = the pane is always visible, unchecked = the
 /// pane is never shown, not even when a row is clicked.
@@ -195,6 +216,12 @@ void TestMainWindowBehavior::rowHeightCoversTheTallestColumn()
     QVERIFY(view != nullptr);
     QVERIFY(model != nullptr);
     QVERIFY(view->fullContentMode());
+
+    // The offscreen platform's default screen (800x800) makes the message
+    // column too narrow for this combination; use an explicit wide window so
+    // the test does not depend on the host screen (REQ-MAINT-05).
+    window.resize(1600, 950);
+    QTest::qWait(50);
 
     int targetColumn = -1;
     for (int column = 0; column < model->columnCount(); ++column) {
@@ -830,9 +857,7 @@ void TestMainWindowBehavior::fullScreenCollapsesFilterPanel()
     QVERIFY(panel->isCollapsed());
 
     // Esc leaves full screen and expands the panel again.
-    QWidget *focus = window.focusWidget() ? window.focusWidget() : &window;
-    QTest::keyClick(focus, Qt::Key_Escape);
-    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(leaveFullScreen(window));
     QVERIFY(!fullScreen->isChecked());
     QVERIFY(!panel->isCollapsed());
 
@@ -840,8 +865,7 @@ void TestMainWindowBehavior::fullScreenCollapsesFilterPanel()
     QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_F11);
     QTRY_VERIFY(window.isFullScreen());
     QVERIFY(panel->isCollapsed());
-    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
-    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(leaveFullScreen(window));
     QVERIFY(!panel->isCollapsed());
 
     // A panel the user collapsed before entering full screen stays collapsed
@@ -850,8 +874,7 @@ void TestMainWindowBehavior::fullScreenCollapsesFilterPanel()
     fullScreen->trigger();
     QTRY_VERIFY(window.isFullScreen());
     QVERIFY(panel->isCollapsed());
-    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
-    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(leaveFullScreen(window));
     QVERIFY(panel->isCollapsed());
 
     // A window that was maximized before full screen comes back maximized
@@ -862,8 +885,7 @@ void TestMainWindowBehavior::fullScreenCollapsesFilterPanel()
     fullScreen->trigger();
     QTRY_VERIFY(window.isFullScreen());
     QVERIFY(panel->isCollapsed());
-    QTest::keyClick(window.focusWidget() ? window.focusWidget() : &window, Qt::Key_Escape);
-    QTRY_VERIFY(!window.isFullScreen());
+    QVERIFY(leaveFullScreen(window));
     QTRY_VERIFY(window.isMaximized());
     QVERIFY(!panel->isCollapsed());
 }
@@ -1005,6 +1027,11 @@ void TestMainWindowBehavior::autoFitColumnsFitsContent()
     QVERIFY(view != nullptr);
     QVERIFY(model != nullptr);
 
+    // Pin the wide window so the layout math is host screen independent (the
+    // offscreen platform starts at 800x800, REQ-MAINT-05).
+    window.resize(1600, 950);
+    QTest::qWait(50);
+
     int timeColumn = -1;
     int levelColumn = -1;
     int targetColumn = -1;
@@ -1086,9 +1113,19 @@ void TestMainWindowBehavior::autoFitColumnsFitsContent()
     // cannot be kept), while the time stamp still gets its full width and the
     // message column keeps its share.
     const int wideTarget = view->columnWidth(targetColumn);
-    window.resize(1024, 700);
-    QTRY_VERIFY(view->viewport()->width() < 1200);
-    QTest::qWait(200);
+
+    // A Wayland compositor may override a client resize that races the initial
+    // configure handshake (observed on KWin: the window is forced back to its
+    // starting size), so retry until the narrow geometry sticks. X11 and
+    // Windows accept the first resize.
+    for (int attempt = 0; attempt < 10; ++attempt) {
+        window.resize(1024, 700);
+        QTest::qWait(50);
+        if (view->viewport()->width() < 1200)
+            break;
+    }
+    QVERIFY2(view->viewport()->width() < 1200,
+             qPrintable(QStringLiteral("viewport=%1").arg(view->viewport()->width())));
     view->autoFitColumns();
 
     QVERIFY2(view->columnWidth(timeColumn) >= widestStamp + 10,
@@ -1099,7 +1136,11 @@ void TestMainWindowBehavior::autoFitColumnsFitsContent()
              qPrintable(QStringLiteral("narrow target=%1 wide=%2")
                             .arg(view->columnWidth(targetColumn))
                             .arg(wideTarget)));
-    QVERIFY(view->columnWidth(messageColumn) >= view->viewport()->width() * 2 / 5 - 2);
+    QVERIFY2(view->columnWidth(messageColumn) >= view->viewport()->width() * 2 / 5 - 2,
+             qPrintable(QStringLiteral("narrow message=%1 viewport=%2 target=%3")
+                            .arg(view->columnWidth(messageColumn))
+                            .arg(view->viewport()->width())
+                            .arg(view->columnWidth(targetColumn))));
     QVERIFY(view->columnWidth(messageColumn) > view->columnWidth(targetColumn));
 
     // The level chips are reserved like the time stamp: they stay complete even

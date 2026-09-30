@@ -50,7 +50,7 @@
 | 平台 | 支持级别 | v1 构建验证 | v1 交付形式 |
 | --- | --- | --- | --- |
 | Windows 11 x64 | 首要支持 | **验证**：MSVC 2022 + Qt 6.8.3 (msvc2022_64)，单元测试 + GUI 冒烟 | `scripts\package.ps1` → `dist\` 便携目录（windeployqt） |
-| Linux x64（glibc ≥ 2.28） | 源码级跨平台支持 | **不验证**（用户决定；Linux 构建验证列为后续工作，见 §9 OPEN-07） | 源码 + CMake `install` 规则 + **CPack DEB（`.deb`）** + `.desktop` / MIME / AppStream（配置交付，产物未验证） |
+| Linux x64（glibc ≥ 2.28） | 源码级跨平台支持 | **已验证**（1.36）：Debian forky/sid + GCC 16.2 + Qt 6.11.2；构建与 `ctest` 15/15（KDE Wayland 与 offscreen）、CLI/GUI 冒烟、`.deb` 生成与内容核对（未执行系统安装，见 AC-17） | 源码 + CMake `install` 规则 + **CPack DEB（`.deb`）** + `.desktop` / MIME / AppStream |
 | macOS | 不支持 | — | 范围外 |
 
 ## 2. 术语
@@ -270,7 +270,7 @@
 | REQ-PLAT-07 | Wayland 与 X11 均可运行（不调用平台专有图形 API）；如遇环境问题允许通过 `QT_QPA_PLATFORM` 覆盖，属可接受限制 | 应该 |
 | REQ-PLAT-08 | 不调用平台专有外部进程（如 `tasklist`/`ps`）；不依赖 shell 特性 | 必须 |
 | REQ-PLAT-09 | 版本信息、About 页面与日志输出中标注当前平台与构建类型，便于问题定位 | 应该 |
-| REQ-PLAT-10 | Linux 侧代码路径按可移植性要求编写，但 **v1 不做构建与运行验证**；未验证状态必须在文档中明确标注 | 必须 |
+| REQ-PLAT-10 | Linux 侧代码路径按可移植性要求编写；v1 原始计划不做构建与运行验证，**1.36 起已由用户在 Debian 原生环境完成构建、测试与打包验证**；未验证状态必须在文档中明确标注（历史状态见 §1.3、AC-16/AC-17、修订记录） | 必须 |
 
 ### REQ-I18N 国际化
 
@@ -323,7 +323,7 @@
 | 书签 / 标记行 | 不做 |
 | Windows NSIS 安装包 / CPack | 不做，仅交付构建脚本 + `windeployqt` 便携目录 |
 | Linux AppImage / Flatpak / Snap | 不做（v1 仅配置 .deb 打包） |
-| **Linux 构建与运行验证** | 本开发机不做；用户将在 **Debian Linux 原生环境**自行验证，届时据结果修订 AC-16 / AC-17 |
+| Linux 构建与运行验证 | **已完成（1.36）**：用户在 Debian Linux 原生环境验证，结果见 §1.3、AC-16 / AC-17 与修订记录 |
 | Linux 源码包（.dsc/.tar.gz）与 PPA / COPR 仓库 | 不做 |
 | macOS 支持 | 不做 |
 | 多标签页 / 多窗口 | 不做（单文档合并视图） |
@@ -350,8 +350,8 @@
 | AC-13 | `ctest` 全部通过；`scripts\package.ps1` 产出可双击运行的 `dist\log-viewer.exe` | 命令行验证 | 是 |
 | AC-14 | `log-viewer --help` / `--version` 输出正确且退出码为 0；`log-viewer <file>` 直接打开；`--lang zh_CN` 生效；参数错误退出码为 2 | 命令行验证 + 单元测试 | 是 |
 | AC-15 | `scripts\register-association.ps1` 注册后双击 `.log` 用本应用打开；`-Unregister` 后 `HKCU\Software\Classes` 相关键完全移除 | 手工 + 注册表核对 | 是 |
-| AC-16 | 源码在 Linux（Debian 13 / GCC 14 / Qt 6.8.2）下 `cmake` 配置与编译一次通过 | 命令行验证 | **否（本机不验证；由用户在 Debian 原生环境验证）** |
-| AC-17 | `cpack -G DEB` 产出 `.deb`，安装后 `log-viewer`、`.desktop`、MIME、AppStream、翻译文件就位 | 命令行验证 | **否（本机不验证；由用户在 Debian 原生环境验证）** |
+| AC-16 | 源码在 Linux（Debian 13 / GCC 14 / Qt 6.8.2）下 `cmake` 配置与编译一次通过 | 命令行验证 | **是（1.36）**：实际环境 Debian forky/sid + GCC 16.2 + Qt 6.11.2（工具链比预期新）；干净构建 111/111 一次通过 |
+| AC-17 | `cpack -G DEB` 产出 `.deb`，安装后 `log-viewer`、`.desktop`、MIME、AppStream、翻译文件就位 | 命令行验证 | **部分（1.36）**：`package-deb.sh` 产出并核对包内文件（可执行文件、`.desktop`、AppStream、图标、`zh_CN` 翻译）；系统 `dpkg -i` 安装未执行 |
 | AC-18 | CPack 配置与 `packaging/linux/` 资源文件存在且语法正确（`cmake --install --dry-run` 级别的静态检查） | 静态检查 | 是（静态） |
 | AC-19 | 打开日志文件后状态栏左下角显示 `Loaded in …`，时长随量级自适应（秒 / 分+秒 / 时+分+秒）；关闭文档后清除 | 单元测试（格式化）+ UI 用例 | 是 |
 | AC-20 | 把发行包解压到任意目录（如 `C:\log-viewer`）后：执行 `log-viewer.exe --register-association` 或同目录 `register-association.ps1`，双击 `.log` 用本应用打开；整体搬移到新目录后 Settings ▸ File Association 显示为未勾选，重新勾选后关联指向新路径；`--unregister-association` 后 `HKCU\Software\Classes` 相关键完全移除且扩展名原值被还原 | 命令行验证 + 注册表核对 + UI 用例 | 是 |
@@ -366,8 +366,8 @@
 | OPEN-04 | GB18030 解码在非中文区域设置的系统上可能失败 | **已确认：按现计划**（Windows 系统 ANSI 代码页，必要时显式 CP936；Linux iconv GB18030），并增加内置解码表兜底（见 OPEN-09） | 已决定 |
 | OPEN-05 | 监控模式保留行数上限 | **已确认：取消独立上限**。监控先完整展示打开时的全部内容，随后把新内容全部追加显示；容量约束统一沿用全局限制（`general.maxLinesPerFile`，默认 200 万行） | 已决定（REQ-MON-06 已改写） |
 | OPEN-06 | 正则性能保护 | **已确认：同意**（模式长度 ≤ 512 + 可取消工作线程 + UI 性能提示） | 已决定 |
-| OPEN-07 | **Linux 构建与运行验证** | **已确认：本开发机不验证**；用户将在 Debian Linux 原生环境验证，届时据结果修订 AC-16/AC-17 | 已决定 |
-| OPEN-08 | Linux 构建依赖清单 | **已确认：按现设计**：`build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools qt6-l10n-tools libgl1-mesa-dev` | 已决定（待用户实测） |
+| OPEN-07 | **Linux 构建与运行验证** | **已关闭（1.36）**：Debian forky/sid 原生完成构建、15/15 测试（Wayland + offscreen）、CLI/GUI 冒烟、`.deb` 生成与关联脚本隔离验证；AC-16 通过、AC-17 部分通过（未系统安装） | 已完成 |
+| OPEN-08 | Linux 构建依赖清单 | **已关闭（1.36）**：实测 Debian forky/sid 还需 **`qt6-tools-dev`**（提供 `Qt6LinguistTools` CMake 包；`qt6-l10n-tools` 只含 lupdate/lrelease 可执行文件）。完整清单：`build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools qt6-l10n-tools qt6-tools-dev libgl1-mesa-dev` | 已完成 |
 | OPEN-09 | musl 环境（Alpine）不支持 GB18030 | **已探索并采纳建议**：内置一份紧凑的 GB18030/GBK 解码表（公开映射数据生成，约数十 KB）作为跨平台兜底；候选编码按 GB18030 → Big5 → Shift_JIS → CP1252 做有效性校验。评估过的备选：ICU（体积大，否决）、Qt5Compat QTextCodec（需额外模块且无 ICU 时能力受限，否决） | 已决定（采纳建议） |
 | OPEN-10 | 单实例运行 | **已确认：不做单实例**。允许同时运行多个实例以查看不同日志（REQ-CLI-07 已改写） | 已决定 |
 | OPEN-11 | Windows 是否注册 `.txt` 关联 | **已废止（依据用户指示）：只注册 `.log`**，`.txt` 及任何其它扩展名都不注册；原 `-IncludeTxt` 参数移除 | 已废止（1.35） |
@@ -413,3 +413,4 @@
 | 1.33 | 2026-09-29 | AI 助手（缺陷修复） | 修复「目标列最后一行文本超出单元格边框」：① **完整内容模式的行高原先只按消息列计算**，当其他列（如目标列）需要更多行时行高不足——现改为**覆盖所有可见列**（最高单元格决定；消息列作基准，其余列以 `maxLines+1` 探测，仅超过基准的列完整计算，控制性能开销）；② `LogItemDelegate::drawClampedText()` 的段落裁剪默认 `ReplaceClip`，替换掉单元格裁剪后放行了越界绘制——改用 `Qt::IntersectClip`（REQ-TABLE-04 的"不截断"以不越界为前提）；任意列宽变化都会失效行高缓存并合并为一次延迟重算；新增 UI 用例 `rowHeightCoversTheTallestColumn`（含像素级越界检查） |
 | 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 **REQ-UI-15**：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待时间；Refresh 更新、关闭文档或 `--demo` 清除、随语言切换重译）；新增 `core/DurationFormat` 与 `tst_duration`，UI 用例覆盖标签位置与清除；REQ-UI-09 与 AC-19 同步 |
 | 1.35 | 2026-09-29 | AI 助手（依据用户反馈） | 修复「发行包解压到 `C:\log-viewer` 后注册脚本路径失效」：① 注册逻辑**移入可执行文件**（新增 `src/platform/FileAssociation`，用 Win32 注册表 API 写 HKCU），CLI 新增 `--register-association` / `--unregister-association` / `--force`（REQ-CLI-10、REQ-ASSOC-06），路径取 `applicationFilePath()` 故天然自定位（REQ-ASSOC-07）；② 注册项补齐 `DefaultIcon`、`.log\OpenWithProgids`、`Applications\...\SupportedTypes`（REQ-ASSOC-08）；③ `package.ps1` 把 `register-association.ps1` 复制到包内与 exe 同级，脚本改为转发入口且默认调用同目录 exe；④ 新增 Settings ▸ File Association 勾选项（REQ-UI-16）与 AC-20；⑤ **只注册 `.log`**，移除 `.txt`/`-IncludeTxt` 一整套（OPEN-11 废止）；新增 `tst_association`（纯函数 + 测试专用扩展名的注册/撤销往返） |
+| 1.36 | 2026-09-30 | AI 助手（Linux 验证） | Linux 原生验证（Debian forky/sid、GCC 16.2、Qt 6.11.2）：`scripts/build.sh` 干净构建 111/111、`ctest` 15/15（KDE Wayland 与 `QT_QPA_PLATFORM=offscreen`）、CLI `--version/--help/--format list`、`--demo`/真实日志/`zh_CN` 冒烟与 `LOGVIEWER_DUMP_LAYOUT` 自检、`package-deb.sh` 产出并核对 `.deb` 内容、`register-association.sh` 在隔离 HOME 注册/撤销。验证中修复：① `tst_highlight` 缺少 `<QElapsedTimer>` 导致 GCC 编译失败；② `autoFitColumns()` 缩放列时未考虑 `QHeaderView::minimumSectionSize`，Qt 静默夹宽导致消息列跌破 40%（REQ-TABLE-05），现以 header 最小节宽为下限并把超预算宽度从最宽列收回；③ `tst_mainwindow_behavior` 适配 Wayland 异步语义（初始 configure 覆盖 resize、全屏退出需确认）并固定测试窗口尺寸使 offscreen 800×800 屏幕可用；④ `CMakeLists.txt` 在构建目录生成 `log-viewer.desktop`（`register-association.sh` 依赖它）；⑤ 关联脚本按 `XDG_CONFIG_HOME` 先建目录（`xdg-mime` 在全新账户不建目录，`text/x-log` 注册会失败）。README/README.zh_CN 的 Linux 依赖补充 `qt6-tools-dev` 并更新验证状态；OPEN-07/OPEN-08 关闭；AC-16 判定通过、AC-17 部分通过（产物核对，未系统安装） |

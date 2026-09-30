@@ -82,17 +82,18 @@ ctest --preset windows-msvc-qt6-release --output-on-failure
 
 ## Build and run (Linux)
 
-> **Not verified yet.** The Linux code path is written to be portable but has not
-> been built on this development machine (see docs/spec.md REQ-PLAT-10). The steps
-> below are the intended ones.
+Verified on Debian forky/sid with GCC 16.2 and Qt 6.11.2 (KDE Wayland and the
+offscreen platform): build, 15/15 tests, CLI, demo/real-log smoke runs and `.deb`
+generation; the `.deb` contents were inspected but not installed system wide.
 
 ```bash
 sudo apt install build-essential cmake ninja-build \
-                 qt6-base-dev qt6-base-dev-tools qt6-l10n-tools libgl1-mesa-dev
+                 qt6-base-dev qt6-base-dev-tools qt6-l10n-tools qt6-tools-dev \
+                 libgl1-mesa-dev
 
 ./scripts/build.sh              # cmake --preset linux-gcc-release + build
 ./scripts/test.sh               # ctest (offscreen when no display)
-./scripts/run.sh --demo
+./scripts/run.sh linux-gcc-release --demo   # first argument is the preset
 
 # Debian package and desktop integration
 ./scripts/package-deb.sh        # -> build/linux-gcc-release/log-viewer_*_amd64.deb

@@ -1,6 +1,7 @@
 #include "highlight/HighlightTheme.h"
 #include "highlight/SnippetTokenizer.h"
 
+#include <QElapsedTimer>
 #include <QTest>
 
 using namespace lv;

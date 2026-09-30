@@ -42,10 +42,12 @@ if(UNIX AND NOT APPLE)
 
     # Desktop entry, AppStream metadata and the application icon (spec.md
     # REQ-ASSOC-03). The .deb package installs them system wide; the local
-    # scripts/register-association.sh script does the same for a user install.
-    install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/log-viewer.desktop.in
-            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
-            RENAME log-viewer.desktop)
+    # scripts/register-association.sh script does the same for a user install and
+    # reads the configured copy from the build directory.
+    configure_file(${CMAKE_SOURCE_DIR}/packaging/linux/log-viewer.desktop.in
+                   ${CMAKE_BINARY_DIR}/log-viewer.desktop @ONLY)
+    install(FILES ${CMAKE_BINARY_DIR}/log-viewer.desktop
+            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
     install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/org.logviewer.LogViewer.metainfo.xml
             DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/packaging/linux/icons/

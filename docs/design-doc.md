@@ -894,6 +894,32 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 
 验证：`ctest` 14/14 通过；三个真实样本的 `LOGVIEWER_DUMP_LAYOUT` 输出均为 `fullContent=1, truncatedRows=0`（完整内容模式行高仍精确、无截断）。双击启动到窗口可用的墙钟时间约 4.6 s，其中 `MainWindow::show()` 本身约 1.6 s（与日志无关，空窗口同样存在，用户决定暂不处理）。
 
+### 16.8 Linux 原生验证记录（2026-09-30）
+
+环境：Debian GNU/Linux forky/sid x86_64、GCC 16.2.0、CMake 4.3.4、Qt 6.11.2（系统包，非 Windows 的 6.8.3）、KDE Wayland 会话，另有 `QT_QPA_PLATFORM=offscreen` 无显示模式。
+
+依赖（apt）：`build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools qt6-l10n-tools qt6-tools-dev libgl1-mesa-dev`。注意 **`qt6-tools-dev` 提供 `Qt6LinguistTools` 的 CMake 包**（Debian unstable 未随 `qt6-l10n-tools` 提供），README 依赖清单已补。
+
+| 项 | 命令 | 结果 |
+| --- | --- | --- |
+| 干净构建 | `bash scripts/build.sh`（删除 build 目录后） | 111/111 通过，产出 `build/linux-gcc-release/bin/log-viewer` |
+| 单元测试（Wayland） | `bash scripts/test.sh` | 15/15 通过（约 3.6 s） |
+| 单元测试（offscreen 无显示） | `QT_QPA_PLATFORM=offscreen bash scripts/test.sh` | 15/15 通过（约 2.3 s） |
+| CLI | `run.sh linux-gcc-release --version / --help / --format list` | 输出正确、退出码 0；`--version` 显示 GCC 16.2 · Qt 6.11.2 · Debian |
+| GUI 冒烟 | `LOGVIEWER_DUMP_LAYOUT=… run.sh linux-gcc-release --demo`、`--lang zh_CN tests/data/tracing-sample.log` | 转储 `fullContent=1 rows=500 truncatedRows=0`；中文列头与真实日志正常 |
+| 打包 | `bash scripts/package-deb.sh` | `log-viewer_1.2.0_amd64.deb` 生成；`dpkg-deb -c` 核对可执行文件、`.desktop`、AppStream、图标、`zh_CN` 翻译齐全；**未执行系统 `dpkg -i`** |
+| 文件关联 | 隔离 `HOME` 下 `register-association.sh` / `--unregister` | 桌面项 Exec 指向构建产物，`text/x-log` 与 `application/x-ndjson` 写入 `mimeapps.list`，撤销干净 |
+
+验证中修复（同步记录于 spec.md 1.36）：
+
+1. `tests/tst_highlight.cpp` 缺少 `<QElapsedTimer>`（MSVC 间接包含掩盖，GCC 编译失败）。
+2. `LogTableView::autoFitColumns()` 缩放分支未考虑 `QHeaderView::minimumSectionSize`（字体相关，offscreen 下为 43 px）：Qt 静默夹宽并从消息列"偷"走宽度，消息列跌破 REQ-TABLE-05 的 40% 下限。现以 header 最小节宽为下限，超预算宽度从最宽列收回（不低于下限）。
+3. `tst_mainwindow_behavior`：Wayland 的初始 `xdg_toplevel.configure` 会覆盖紧随 `show()` 的 `resize()`，全屏退出需等合成器确认；用例改为重试直到生效（新增 `leaveFullScreen` 辅助 + resize 重试），并显式固定窗口 1600×950，使 offscreen 800×800 虚拟屏下也可运行。
+4. `CMakeLists.txt` 在构建目录 `configure_file` 生成 `log-viewer.desktop`，`register-association.sh` 才找得到它（此前脚本在任何构建后都会报 "Desktop file not found"）。
+5. `register-association.sh` 调 `xdg-mime` 前执行 `mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"`：Debian 的 xdg-mime 在全新账户不建目录，`text/x-log` 注册会静默失败。
+
+未验证/遗留：`.deb` 系统安装（`sudo dpkg -i`）与真实桌面双击 `.log` 未执行；`xdg-mime` 在本机打印 `qtpaths: not found`（xdg-utils 查找 `qtpaths`，Debian 提供 `qtpaths6`），不影响写入结果；GCC 下有三处 `-Wunused-function` 警告（`FileAssociation.cpp`、`StructuredFormats.cpp`、`tst_filter.cpp`，平台条件编译导致，未处理）。
+
 ## 15. 修订记录
 
 | 版本 | 日期 | 修改人 | 说明 |
@@ -935,3 +961,4 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 REQ-UI-15：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待；Refresh 更新、关闭文档与 `--demo` 清除、语言切换重译）；新增 `core/DurationFormat`（`formatDuration()`，上下文 `DurationFormat`）与 `tst_duration`，UI 用例覆盖标签位置与清除；§4.8、§6.1、§6.2、§16.2 同步 |
 | 1.35 | 2026-09-29 | AI 助手（性能优化） | 打开大文件性能修复（新增 §16.7）：① `updateVisibleRowHeights()` 不再在视口高度为 0（首次布局前）时遍历整篇文档，只更新可见行；② 新增 `LogTableView::setHeightPassSuspended()`，`setProvider()` / `onDocumentRebuilt()` 期间合并为单次行高 pass；③ `LogSource` 新增 `beginBulkRead()` / `endBulkRead()`，条目索引 / 级别统计不再逐行重开文件（pass 之间不持有句柄，轮转语义不变）。实测 6.9 MB / 38035 行由约 71 s 降至 3.19 s（5.4 MB 为 2.82 s），`ctest` 14/14 通过、`truncatedRows=0` |
 | 1.36 | 2026-09-29 | AI 助手（缺陷修复） | 修复「切换界面语言后日志表格列头仍为旧语言」：`LogTableModel` 不再在 `rebuildColumns()` 时缓存译好的列标题（`Column` 去掉 `title` 字段），`headerData()` 改为按需翻译（extra 列仍用数据键，不翻译）；新增 `LogTableModel::retranslateHeaders()` 并由 `MainWindow::retranslateUi()` 调用，发出 `headerDataChanged` 使表头随语言切换即时刷新（REQ-I18N-02），Columns 菜单文本同步更新；新增 UI 用例 `headersFollowLanguageSwitch`（英文 → 中文 → 英文，含无翻译目录时 SKIP 守卫） |
+| 1.37 | 2026-09-30 | AI 助手（Linux 验证） | 新增 §16.8 Linux 原生验证记录：Debian forky/sid + GCC 16.2 + Qt 6.11.2，干净构建、`ctest` 15/15（Wayland + offscreen）、CLI/GUI 冒烟、`.deb` 生成与内容核对、关联脚本隔离验证；修复 ① `tst_highlight` 缺少 `<QElapsedTimer>`；② `autoFitColumns()` 以 `QHeaderView::minimumSectionSize` 为缩放下限并把超预算宽度从最宽列收回（此前 Qt 静默夹宽使消息列跌破 40%）；③ `tst_mainwindow_behavior` 适配 Wayland 异步语义并固定测试窗口尺寸；④ 构建目录生成 `log-viewer.desktop`；⑤ `register-association.sh` 创建 `XDG_CONFIG_HOME` 目录。`.deb` 系统安装未执行 |

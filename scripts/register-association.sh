@@ -35,6 +35,9 @@ sed "s|^Exec=.*|Exec=\"$exe\" %F|" "$desktop_source" > "$installed_desktop"
 update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
 
 if command -v xdg-mime >/dev/null 2>&1; then
+    # xdg-mime does not create the config directory itself (it fails with a
+    # touch/awk error on a fresh account), so make sure it exists.
+    mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}"
     xdg-mime default log-viewer.desktop text/x-log
     xdg-mime default log-viewer.desktop application/x-ndjson
     echo "Registered log-viewer.desktop as the handler for text/x-log."

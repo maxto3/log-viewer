@@ -963,7 +963,11 @@ void LogTableView::autoFitColumns()
         // proportionally to their content length. The reserved columns (time
         // stamp, level chips) and the flexible (message) column keep their widths,
         // so a scaled column may fall below the usual minimum width; the last
-        // column absorbs the rounding.
+        // column absorbs the rounding. Qt refuses widths below the header's
+        // minimum section size (font dependent), so that minimum is the floor:
+        // a smaller value would be clamped silently and eat into the flexible
+        // column's share (REQ-TABLE-05).
+        const int floor = qMax(kMinTightColumnWidth, m_header->minimumSectionSize());
         int last = -1;
         for (int column = columns - 1; column >= 0; --column) {
             if (content.at(column) > 0 && !reservedColumn.at(column)) {
@@ -972,15 +976,37 @@ void LogTableView::autoFitColumns()
             }
         }
         int assigned = 0;
+        QVector<int> scaledWidths(columns, 0);
         for (int column = 0; column < columns; ++column) {
             if (content.at(column) <= 0 || reservedColumn.at(column))
                 continue;
             const int share = static_cast<int>(qint64(budget) * content.at(column) / othersSum);
             const int width = column == last
-                ? qMax(kMinTightColumnWidth, budget - assigned)
-                : qMax(kMinTightColumnWidth, share);
-            setColumnWidth(column, width);
+                ? qMax(floor, budget - assigned)
+                : qMax(floor, share);
+            scaledWidths[column] = width;
             assigned += width;
+        }
+        // The floor can push the sum above the budget; take the excess back
+        // from the widest scaled column(s), never below the floor, so the
+        // flexible column keeps its 40% share.
+        for (int excess = assigned - budget; excess > 0;) {
+            int widest = -1;
+            for (int column = 0; column < columns; ++column) {
+                if (scaledWidths.at(column) > floor
+                    && (widest < 0 || scaledWidths.at(column) > scaledWidths.at(widest))) {
+                    widest = column;
+                }
+            }
+            if (widest < 0)
+                break;                       // every column is already at the floor
+            const int take = qMin(excess, scaledWidths.at(widest) - floor);
+            scaledWidths[widest] -= take;
+            excess -= take;
+        }
+        for (int column = 0; column < columns; ++column) {
+            if (scaledWidths.at(column) > 0)
+                setColumnWidth(column, scaledWidths.at(column));
         }
     }
 

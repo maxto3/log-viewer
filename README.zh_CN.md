@@ -78,16 +78,18 @@ ctest --preset windows-msvc-qt6-release --output-on-failure
 
 ## Linux 构建与运行
 
-> **尚未验证**：Linux 代码路径按可移植性要求编写，但未在本开发机上实际构建
-> （见 docs/spec.md REQ-PLAT-10）。以下为预期步骤。
+已在 Debian forky/sid + GCC 16.2 + Qt 6.11.2 上验证（KDE Wayland 及 offscreen
+平台）：构建、15/15 单元测试、命令行、演示/真实日志冒烟与 `.deb` 生成；`.deb`
+内容已核对，但未执行系统安装。
 
 ```bash
 sudo apt install build-essential cmake ninja-build \
-                 qt6-base-dev qt6-base-dev-tools qt6-l10n-tools libgl1-mesa-dev
+                 qt6-base-dev qt6-base-dev-tools qt6-l10n-tools qt6-tools-dev \
+                 libgl1-mesa-dev
 
 ./scripts/build.sh              # cmake --preset linux-gcc-release 并构建
 ./scripts/test.sh               # ctest（无显示环境自动使用 offscreen）
-./scripts/run.sh --demo
+./scripts/run.sh linux-gcc-release --demo   # 第一个参数是 preset
 
 # Debian 包与桌面集成
 ./scripts/package-deb.sh        # 输出 build/linux-gcc-release/log-viewer_*_amd64.deb
