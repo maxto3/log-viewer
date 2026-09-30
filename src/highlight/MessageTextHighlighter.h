@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AnsiText.h"
 #include "core/Matcher.h"
 #include "highlight/HighlightTheme.h"
 
@@ -20,6 +21,10 @@ public:
     explicit MessageTextHighlighter(QTextDocument *document);
 
     void setTheme(const HighlightTheme *theme);
+    /// Selects the ANSI palette variant for terminal colours (REQ-PARSE-12).
+    void setDarkTheme(bool dark);
+    /// SGR styles of the currently shown message; set before setContent().
+    void setAnsiSpans(const QVector<AnsiSpan> &spans);
     void setFind(const Matcher &matcher, const QColor &background, const QColor &foreground);
     /// Recomputes tokens/matches for the whole message; call when content changes.
     void setContent(const QString &text);
@@ -30,7 +35,9 @@ protected:
 private:
     const HighlightTheme *m_theme = nullptr;
     QVector<TokenSpan> m_tokens;
+    QVector<AnsiSpan> m_ansiSpans;
     QVector<MatchRange> m_matches;
+    bool m_dark = false;
     QColor m_keywordBackground = QColor(0x7C, 0xFC, 0x00);
     QColor m_keywordForeground = QColor(0x00, 0x00, 0x00);
 };

@@ -536,4 +536,13 @@ const QVector<TokenSpan> &LogTableModel::tokenSpans(int row, int column) const
     return *inserted;
 }
 
+const QVector<AnsiSpan> &LogTableModel::ansiSpans(int row, int column) const
+{
+    static const QVector<AnsiSpan> empty;
+    if (columnKind(column) != ColumnKind::Message)
+        return empty;
+    const LogEntry *logEntry = entry(row);
+    return logEntry ? logEntry->ansiSpans : empty;
+}
+
 } // namespace lv

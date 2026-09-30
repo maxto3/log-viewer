@@ -16,6 +16,11 @@ private slots:
 
     void lfFile();
     void crlfFile();
+    void crOnlyFile();
+    void mixedWithCarriageReturns();
+    void crRfNSequence();
+    void crTerminatorAcrossWrites();
+    void crlfAcrossChunkBoundary();
     void mixedLineEndings();
     void noTrailingNewline();
     void emptyFile();
@@ -82,6 +87,81 @@ void TestLineIndex::mixedLineEndings()
     QCOMPARE(index.lineLength(0), 1);
     QCOMPARE(index.lineLength(1), 1);
     QCOMPARE(index.lineLength(2), 1);
+}
+
+void TestLineIndex::crOnlyFile()
+{
+    // Classic Mac line endings (REQ-PARSE-11).
+    QVERIFY(!writeFile("one\rtwo\rthree").isEmpty());
+    LineIndex index;
+    QVERIFY(index.build(m_path, 0, nullptr));
+    QCOMPARE(index.lineCount(), 3);
+    QCOMPARE(index.lineStart(0), 0);
+    QCOMPARE(index.lineLength(0), 3);
+    QCOMPARE(index.lineLength(1), 3);
+    QCOMPARE(index.lineLength(2), 5);
+}
+
+void TestLineIndex::mixedWithCarriageReturns()
+{
+    // Matches console boot logs: CR-terminated and CRLF-terminated lines mixed.
+    QVERIFY(!writeFile("a\rb\nc\r\nd").isEmpty());
+    LineIndex index;
+    QVERIFY(index.build(m_path, 0, nullptr));
+    QCOMPARE(index.lineCount(), 4);
+    QCOMPARE(index.lineLength(0), 1);
+    QCOMPARE(index.lineLength(1), 1);
+    QCOMPARE(index.lineLength(2), 1);
+    QCOMPARE(index.lineLength(3), 1);
+}
+
+void TestLineIndex::crRfNSequence()
+{
+    // "\r\r\n" is an empty line followed by a CRLF terminator.
+    QVERIFY(!writeFile("\r\r\nX").isEmpty());
+    LineIndex index;
+    QVERIFY(index.build(m_path, 0, nullptr));
+    QCOMPARE(index.lineCount(), 3);
+    QCOMPARE(index.lineLength(0), 0);
+    QCOMPARE(index.lineLength(1), 0);
+    QCOMPARE(index.lineLength(2), 1);
+}
+
+void TestLineIndex::crTerminatorAcrossWrites()
+{
+    // A writer that flushes '\r' and '\n' separately: refresh() must swallow the
+    // LF instead of indexing a spurious empty line.
+    QVERIFY(!writeFile("one\r").isEmpty());
+    LineIndex index;
+    QVERIFY(index.build(m_path, 0, nullptr));
+    QCOMPARE(index.lineCount(), 1);
+    QCOMPARE(index.lineLength(0), 3);
+
+    QFile file(m_path);
+    QVERIFY(file.open(QIODevice::Append));
+    QCOMPARE(file.write("\ntwo\n"), qint64(5));
+    file.close();
+
+    bool rebuilt = false;
+    QString error;
+    QVERIFY2(index.refresh(m_path, 0, &error, &rebuilt), qPrintable(error));
+    QVERIFY(!rebuilt);
+    QCOMPARE(index.lineCount(), 2);
+    QCOMPARE(index.lineLength(1), 3);
+}
+
+void TestLineIndex::crlfAcrossChunkBoundary()
+{
+    // CR is the last byte of the first 64 KiB chunk, LF the first byte of the
+    // next one: the pair must still count as a single terminator.
+    QByteArray content(64 * 1024 - 1, 'a');
+    content += "\r\nnext\n";
+    QVERIFY(!writeFile(content).isEmpty());
+    LineIndex index;
+    QVERIFY(index.build(m_path, 0, nullptr));
+    QCOMPARE(index.lineCount(), 2);
+    QCOMPARE(index.lineLength(0), 64 * 1024 - 1);
+    QCOMPARE(index.lineLength(1), 4);
 }
 
 void TestLineIndex::noTrailingNewline()

@@ -20,10 +20,12 @@ Studio Code colour scheme, and can follow a file live like `tail -f`.
 | Live monitoring | `Ctrl+M` follows a single file like `tail -f`: appended lines appear automatically, the view follows the tail, rotation/truncation reloads the document |
 | Multiple files | Open or drop several files: same-format files are merged by timestamp with an additional File column; different formats are rejected with an explanation |
 | Encodings | UTF-8 (with or without BOM), UTF-16, and legacy encodings auto-detected (GB18030/GBK, Big5, Shift_JIS, CP1252) and shown as UTF-8 |
+| Console logs | ANSI escape sequences are stripped (cursor/title noise) and terminal colours — 8/16-colour, 256-colour and truecolour, plus bold/italic/underline — are rendered in the table and the details pane; LF, CRLF and CR-only line endings are indexed correctly (for example systemd `boot.log`) |
 | Languages | Complete English and Simplified Chinese user interface, switchable at runtime |
 | Themes | Light, Dark or follow the system; separate syntax highlighting theme setting |
 | View | Collapse the search & filter panel to its title row to give the table more room; full screen (`F11`, leave with `Esc`) automatically collapses that panel |
 | Status bar | The bottom left corner shows how long the last file open took (`Loaded in 0.35 s`; the value adapts to seconds / minutes / hours); the right side shows the file name, format, encoding, line count and monitoring state |
+| System logs (Linux) | Files without read permission keep a persistent red alert and offer **Open as Administrator…**: the file is read through the system authentication helper (`pkexec`/polkit) into a private read-only snapshot; monitoring is disabled for snapshots and Refresh re-reads the original file. Without `pkexec` the alert stays and explains how to grant access manually |
 
 ## Requirements
 
@@ -83,8 +85,15 @@ ctest --preset windows-msvc-qt6-release --output-on-failure
 ## Build and run (Linux)
 
 Verified on Debian forky/sid with GCC 16.2 and Qt 6.11.2 (KDE Wayland and the
-offscreen platform): build, 15/15 tests, CLI, demo/real-log smoke runs and `.deb`
+offscreen platform): build, 17/17 tests, CLI, demo/real-log smoke runs and `.deb`
 generation; the `.deb` contents were inspected but not installed system wide.
+
+Root-owned logs (for example `/var/log/auth.log`, mode `640 root:adm`) can be
+opened read-only through the system authentication helper: the status bar offers
+**Open as Administrator…**, the content is copied into a private snapshot and
+the snapshot is deleted when the document is closed. Monitoring is disabled for
+such snapshots; Refresh asks for authorization again and re-reads the original
+file.
 
 ```bash
 sudo apt install build-essential cmake ninja-build \

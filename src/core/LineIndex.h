@@ -47,6 +47,9 @@ private:
     int m_maxLineLength = 0;
     bool m_truncated = false;
     bool m_lastLineIncomplete = false;
+    /// A '\r' terminated the previous scan and its '\n' may still arrive in a
+    /// later refresh: the next scan swallows a leading LF of the CRLF pair.
+    bool m_skipLeadingLf = false;
 };
 
 } // namespace lv

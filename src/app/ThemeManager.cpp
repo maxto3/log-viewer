@@ -55,22 +55,60 @@ QPalette lightPalette()
 QString styleSheet(bool dark)
 {
     const QString border = dark ? QStringLiteral("#3F3F46") : QStringLiteral("#C8C8C8");
-    return QStringLiteral(
-               "QGroupBox {"
-               "  border: 1px solid %1;"
-               "  border-radius: 4px;"
-               "  margin-top: 12px;"
-               "  padding: 12px 10px 10px 10px;"
-               "}"
-               "QGroupBox::title {"
-               "  subcontrol-origin: margin;"
-               "  subcontrol-position: top left;"
-               "  left: 10px;"
-               "  padding: 0 4px;"
-               "  font-weight: 600;"
-               "}"
-               "QStatusBar::item { border: none; }")
-        .arg(border);
+    // Persistent status bar warning (REQ-REL-01); both colours keep at least
+    // 4.5:1 contrast on the corresponding status bar background (REQ-VIS-10).
+    const QString warning = dark ? QStringLiteral("#FF6B6B") : QStringLiteral("#C62828");
+    // Prominent "Open as Administrator…" action (REQ-REL-04): filled warning
+    // colour so it stands out in the status bar, with a contrasting label.
+    const QString elevateText = dark ? QStringLiteral("#1F1F1F") : QStringLiteral("#FFFFFF");
+    const QString elevateBorder = dark ? QStringLiteral("#C94F4F") : QStringLiteral("#8E1A1A");
+    const QString elevateHover = dark ? QStringLiteral("#FF8585") : QStringLiteral("#B21F1F");
+    const QString elevatePressed = dark ? QStringLiteral("#E85D5D") : QStringLiteral("#9C1B1B");
+
+    const QString common = QStringLiteral(
+                               "QGroupBox {"
+                               "  border: 1px solid %1;"
+                               "  border-radius: 4px;"
+                               "  margin-top: 12px;"
+                               "  padding: 12px 10px 10px 10px;"
+                               "}"
+                               "QGroupBox::title {"
+                               "  subcontrol-origin: margin;"
+                               "  subcontrol-position: top left;"
+                               "  left: 10px;"
+                               "  padding: 0 4px;"
+                               "  font-weight: 600;"
+                               "}"
+                               "QStatusBar::item { border: none; }"
+                               "QLabel#statusWarning {"
+                               "  color: %2;"
+                               "  font-weight: 600;"
+                               "}"
+                               "QLabel#emptyHint[warning=\"true\"] {"
+                               "  color: %2;"
+                               "}")
+                               .arg(border, warning);
+    const QString elevate = QStringLiteral(
+                                "QPushButton#elevateButton {"
+                                "  background-color: %1;"
+                                "  color: %2;"
+                                "  font-weight: 600;"
+                                "  border: 1px solid %3;"
+                                "  border-radius: 3px;"
+                                "  padding: 0px 10px;"
+                                "}"
+                                "QPushButton#elevateButton:hover {"
+                                "  background-color: %4;"
+                                "}"
+                                "QPushButton#elevateButton:pressed {"
+                                "  background-color: %5;"
+                                "}")
+                                .arg(warning)
+                                .arg(elevateText)
+                                .arg(elevateBorder)
+                                .arg(elevateHover)
+                                .arg(elevatePressed);
+    return common + elevate;
 }
 
 } // namespace

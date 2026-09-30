@@ -920,6 +920,83 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 
 未验证/遗留：`.deb` 系统安装（`sudo dpkg -i`）与真实桌面双击 `.log` 未执行；`xdg-mime` 在本机打印 `qtpaths: not found`（xdg-utils 查找 `qtpaths`，Debian 提供 `qtpaths6`），不影响写入结果；GCC 下有三处 `-Wunused-function` 警告（`FileAssociation.cpp`、`StructuredFormats.cpp`、`tst_filter.cpp`，平台条件编译导致，未处理）。
 
+### 16.9 打开失败告警持久化（2026-10-01）
+
+背景：用户报告在 Linux 打开系统日志（如 `root:adm 640` 的 `/var/log` 文件）时"没有报警信息，也不会弹出提权窗口"。排查确认：权限检测本身存在（`LogSource::open()` 的 `QFileInfo::isReadable()` 预检），问题在报错通道——`reportError()` 只用 `statusBar()->showMessage(message, 8000)`，8 秒后超时消失，且会被后续任意临时状态消息覆盖；已有文档打开时尤其难以察觉。
+
+实现（REQ-REL-01 修订，spec 1.37）：
+
+| 项 | 内容 |
+| --- | --- |
+| 告警组件 | 新增 `src/ui/StatusWarningLabel`（`QLabel` 子类，`objectName=statusWarning`）：`setFullText()` 保存全文并写入 tooltip，`resizeEvent()` / `showEvent()` 时按当前宽度做 `Qt::ElideMiddle` 省略——过长路径不再撑宽状态栏 |
+| 接入点 | `MainWindow::createStatusBar()` 将其作为最左侧普通状态栏部件（`addWidget`，默认隐藏）；`reportError()` 改为写入该标签并显示（不再调用 `showMessage`）；`setProvider()` 成功打开 / 加载 demo 时清空并隐藏 |
+| 样式 | `ThemeManager::styleSheet()` 新增 `QLabel#statusWarning` 规则：浅色 `#C62828`、深色 `#FF6B6B`、`font-weight: 600`；实测对比度 5.07:1 / 5.52:1（REQ-VIS-10 要求 ≥ 4.5:1） |
+| 空状态提示 | 无文档时空状态中央提示（`m_emptyHint`，`objectName=emptyHint`）在显示错误时同样置为主题化红色：动态属性 `warning` + `QLabel#emptyHint[warning="true"]` 样式规则（与状态栏告警同色），成功打开 / 加载 demo 后恢复常规文字色；错误文案与常规引导文案统一由 `MainWindow::updateEmptyHint()` 生成 |
+| 文案 | 权限错误由 `File is not readable: %1` 改为 `Permission denied: cannot read '%1'`（`logviewer_zh_CN.ts` 同步：权限不足，无法读取：%1） |
+| 语义 | 告警保留到下一条告警替换或下一次成功打开（含 `--demo`）；复制反馈等临时 `showMessage` 仅在其显示期间盖住告警，结束后自动恢复；关闭文档不清除（与既有 `m_lastError` 行为一致） |
+
+验证（Debian forky/sid、GCC 16.2、Qt 6.11.2）：
+
+- `bash scripts/build.sh` 构建通过，`-Wall -Wextra -Wpedantic` 无新增诊断；
+- `ctest` **15/15**：`QT_QPA_PLATFORM=offscreen` 与 KDE Wayland 原生会话各执行一次；
+- 新增用例 `warningPersistsUntilNextSuccessfulOpen`（告警持久、不使用 `showMessage`、临时消息结束后恢复、成功打开清除、已加载文档行数不变、`emptyHint` 警告色与恢复）与 `permissionDeniedWarningKeepsDocument`（`chmod 000` 权限场景；root 或文件系统不强制权限时 `QSKIP`）；
+- 主题规则存在性经 `ThemeManager::apply()` 断言；红色以**解析后的 widget 调色板颜色**断言（样式表颜色会反映到 `QPalette::WindowText`），不依赖像素扫描。
+
+后续（第二期，已完成）：Linux `pkexec` 提权读取见 §16.10；REQ-PLAT-08 的例外条款与 REQ-REL-04 / REQ-CLI-11 已随 spec 1.39 落地。
+
+### 16.11 行尾 CR 与 ANSI 控制序列处理（2026-10-01）
+
+背景：用户反馈打开 `/var/log/boot.log`（复制到仓库根 `boot.log`）时特殊字符显示为方块、行数偏少。文件分析（22039 字节，合法 UTF-8）：CRLF 233 + **单独 CR 221** + LF 1 → 实际 455 行，应用只显示 234 行；ESC 748 个（741 个 CSI：SGR 颜色与光标/窗口协议、2 个 OSC、4 个其它 ESC），表格中渲染为方块并残留 `[0;32m` 文本。
+
+实现（spec 1.41 的 REQ-PARSE-11 修订与 REQ-PARSE-12）：
+
+| 项 | 内容 |
+| --- | --- |
+| 行尾 | `LineIndex::scan()` 改为 LF / CRLF / CR 统一状态机：CR 立即结束一行、紧随的 LF 被吞掉；跨 64 KiB 块边界与跨 refresh 追加（写入方分两次 flush `\r`/`\n`）由 `m_skipLeadingLf` 保持；`\r\r\n` = 空行 + 终止符 |
+| 清理 | 新增 `core/AnsiText`：解析 CSI / OSC / DCS / SOS / PM / APC / 两字符 ESC 与 C0/C1 控制字符（保留 TAB/LF）；`strip()` 对无控制字符的行走快速路径直接返回；`process()` 同时产出 SGR span |
+| 显示接入 | 格式探测、`startsEntry`、`parseEntry` 全部使用清理文本；`parseEntryAt` 从原始行计算 SGR span 并映射到解析后的 Message（`indexOf` 定位，定位失败则放弃颜色）；查找/过滤/复制/导出统一使用清理文本 |
+| 颜色渲染 | `LogEntry::ansiSpans` + `LogTableModel::ansiSpans()`；表格 `LogItemDelegate::buildFormats()` 与详情 `MessageTextHighlighter` 的优先级为 snippet 颜色 → ANSI 颜色 → Find 高亮；支持前景/背景、加粗、斜体、下划线、删除线、8/16 色与 `38;5;n`、`38;2;r;g;b` |
+| 调色板 | 新增 `highlight/AnsiPalette`：0-15 每色浅/深两套，实测最差对比度 5.13:1（浅）/ 5.22:1（深），满足 REQ-VIS-10 |
+
+验证：
+
+- `bash scripts/build.sh` 构建通过（仅存量 GCC `-Wunused-function` 两处）；`ctest` **17/17**（offscreen 与 KDE Wayland）。
+- 新增 `tst_ansitext` 14 用例（SGR/扩展色/控制字符/序列剥离/span 偏移/调色板对比度）；`tst_lineindex` 新增 5 个 CR 用例（`\r\r\n`、跨写入、跨 64 KiB 块、CR-only、混合）；UI 用例断言 4 行、ANSI 文本清理、span 颜色。
+- 真实 `boot.log`：**455 行**（原 234）；浅/深主题截图确认 `[  OK  ]` 绿色、Debian 标题加粗、无方块与 `[0;32m` 残文。
+
+说明：纯光标序列行清理后为空行（原文件语义）；复制/导出使用清理后文本、不保留颜色（REQ-PARSE-12 已写明）。
+
+### 16.10 Linux 提权读取（pkexec 只读快照，2026-10-01）
+
+目标（spec 1.39 的 REQ-REL-04 / REQ-CLI-11 / REQ-PLAT-08 例外）：无读取权限的系统日志（如 `root:adm 640` 的 `/var/log` 文件）在红色告警旁提供**以管理员权限打开…**，授权后以只读快照打开；主进程始终保持非特权。
+
+安全边界（实现要点）：
+
+| 约束 | 实现 |
+| --- | --- |
+| root 不写用户路径 | `pkexec` 子进程只读源文件、仅向 stdout 输出原始字节；快照由父进程（普通用户）写盘 |
+| 不经 shell、argv 固定 | `QProcess` 直接 `setProgram(pkexec)` + `setArguments({applicationFilePath(), "--elevated-stream", path})`，无 shell 插值 |
+| 只接受常规文件 | 辅助进程 `open(O_RDONLY|O_CLOEXEC)` 后对**已打开的描述符** `fstat` 检查 `S_ISREG`（无 TOCTOU；符号链接按目标判定，兼容轮转软链） |
+| 快照私有 | `XDG_RUNTIME_DIR`（无则回退系统临时目录）下 `log-viewer-elevated-XXXXXX`：`mkdtemp` **原子创建 0700 目录**，快照文件 0600，文件名沿用原名以便窗口标题可读 |
+| 生命周期 | 文档关闭 / 被替换 / 程序退出（`MainWindow::~MainWindow`）删除快照；失败路径立即清理，不留目录 |
+| 无 GUI 依赖 | `--elevated-stream` 在 `main()` 中于 QApplication 之前处理，无显示环境可用 |
+| Monitor 语义 | 提权快照禁用 Monitor；Refresh 重新授权并复制，成功后删除旧快照 |
+| 失败降级 | pkexec 缺失 / 无认证代理 / 取消授权 → 红色告警保留并可重试；pkexec 缺失时附加手工授权指引（加入 `adm` 组等） |
+
+实现位置：
+
+- `src/platform/ElevatedFileReader.{h,cpp}`：`isSupported()` / `unsupportedText()` / `createSnapshot()` / `removeSnapshot()` / `runStreamHelper()`，另有仅供测试的程序覆盖（test seam）。
+- `main.cpp`：`--elevated-stream <绝对路径>` 预解析（REQ-CLI-11），非 3 参数 exit 2。
+- `MainWindow`：状态栏 `elevateButton` + `openElevated()`；`openPaths()` 重构为 `openPathsInternal()`（新增 `recentPaths` / `currentPath` / `keepSnapshot` 参数，供提权流程复用并防止引用成员被提前清空）；`releaseSnapshot()` 负责快照生命周期；文档标签附加 `(elevated snapshot)`。按钮为**醒目的填充高亮样式**（`QPushButton#elevateButton`：主题化告警色背景、对比文字、加粗、圆角、hover/pressed），不用平面样式；状态栏高度不因按钮出现而变化（实测 25 px，`elevateButton` 20 px）。
+
+验证（Debian forky/sid、GCC 16.2、Qt 6.11.2）：
+
+- `bash scripts/build.sh` 构建通过、无新增诊断；新增 `tst_elevated` 6 用例：pkexec 探测、辅助模式逐字节输出（含 NUL/非法 UTF-8）、目录与缺失文件拒绝、脚本替身快照复制（内容/0700/0600/清理）、失败错误传播且不留目录、非常规文件拒绝。
+- `ctest` **16/16**（`QT_QPA_PLATFORM=offscreen` 与 KDE Wayland 各一次）；`tst_mainwindow_behavior::elevationOpensSnapshotAndCleansUp` 用脚本替身覆盖 UI 全链路：权限告警 → 按钮 → 快照打开 → Monitor 禁用 → 文档标注 → Refresh 重新复制并删旧快照 → 关闭删除快照。
+- CLI 冒烟（清除 `DISPLAY` / `WAYLAND_DISPLAY` / `XDG_RUNTIME_DIR`）：辅助模式输出与源文件逐字节一致（exit 0）；目录 exit 1；缺参数 exit 2。
+- 视觉核对：`LOGVIEWER_DUMP_LAYOUT` 新增 `statusBar` / `elevateButton` 输出，浅色与深色离屏截图确认按钮为填充告警色 + 对比文字且状态栏高度不变。
+- **未验证（诚实记录）**：真实 polkit 授权对话框与 pkexec 提权路径未在自动化中触发（会弹出系统认证窗口，需用户人工点击确认）；认证与复制期间 UI 同步阻塞；无 `XDG_RUNTIME_DIR` 时回退系统临时目录，异常崩溃可能遗留快照（0600，仅本人可读）。
+
 ## 15. 修订记录
 
 | 版本 | 日期 | 修改人 | 说明 |
@@ -962,3 +1039,8 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 1.35 | 2026-09-29 | AI 助手（性能优化） | 打开大文件性能修复（新增 §16.7）：① `updateVisibleRowHeights()` 不再在视口高度为 0（首次布局前）时遍历整篇文档，只更新可见行；② 新增 `LogTableView::setHeightPassSuspended()`，`setProvider()` / `onDocumentRebuilt()` 期间合并为单次行高 pass；③ `LogSource` 新增 `beginBulkRead()` / `endBulkRead()`，条目索引 / 级别统计不再逐行重开文件（pass 之间不持有句柄，轮转语义不变）。实测 6.9 MB / 38035 行由约 71 s 降至 3.19 s（5.4 MB 为 2.82 s），`ctest` 14/14 通过、`truncatedRows=0` |
 | 1.36 | 2026-09-29 | AI 助手（缺陷修复） | 修复「切换界面语言后日志表格列头仍为旧语言」：`LogTableModel` 不再在 `rebuildColumns()` 时缓存译好的列标题（`Column` 去掉 `title` 字段），`headerData()` 改为按需翻译（extra 列仍用数据键，不翻译）；新增 `LogTableModel::retranslateHeaders()` 并由 `MainWindow::retranslateUi()` 调用，发出 `headerDataChanged` 使表头随语言切换即时刷新（REQ-I18N-02），Columns 菜单文本同步更新；新增 UI 用例 `headersFollowLanguageSwitch`（英文 → 中文 → 英文，含无翻译目录时 SKIP 守卫） |
 | 1.37 | 2026-09-30 | AI 助手（Linux 验证） | 新增 §16.8 Linux 原生验证记录：Debian forky/sid + GCC 16.2 + Qt 6.11.2，干净构建、`ctest` 15/15（Wayland + offscreen）、CLI/GUI 冒烟、`.deb` 生成与内容核对、关联脚本隔离验证；修复 ① `tst_highlight` 缺少 `<QElapsedTimer>`；② `autoFitColumns()` 以 `QHeaderView::minimumSectionSize` 为缩放下限并把超预算宽度从最宽列收回（此前 Qt 静默夹宽使消息列跌破 40%）；③ `tst_mainwindow_behavior` 适配 Wayland 异步语义并固定测试窗口尺寸；④ 构建目录生成 `log-viewer.desktop`；⑤ `register-association.sh` 创建 `XDG_CONFIG_HOME` 目录。`.deb` 系统安装未执行 |
+| 1.38 | 2026-10-01 | AI 助手（依据用户反馈） | 新增 §16.9：打开失败告警持久化（REQ-REL-01 修订，spec 1.37）。新增 `src/ui/StatusWarningLabel`（中间省略 + tooltip、主题化红色 `#C62828` / `#FF6B6B`）；`reportError()` 不再使用 8 秒 `showMessage`，改为持久告警标签；权限文案改为 `Permission denied: cannot read '%1'`；新增 2 条 UI 用例，`ctest` 15/15（offscreen + Wayland）。提权读取（pkexec）列为第二期待立项，须先修订 REQ-PLAT-08 |
+| 1.39 | 2026-10-01 | AI 助手（依据用户反馈） | UI 微调（spec 1.38）：空状态中央提示 `emptyHint` 在显示错误时同样显示为主题化红色（动态属性 `warning` + `QLabel#emptyHint[warning="true"]`），文案统一由 `MainWindow::updateEmptyHint()` 生成、成功打开后恢复常规色；§16.9 同步，用例改为断言解析后的调色板颜色 |
+| 1.40 | 2026-10-01 | AI 助手（依据用户指示） | 新增 §16.10 第二期 Linux 提权读取（spec 1.39：REQ-REL-04 / REQ-CLI-11 / REQ-PLAT-08 例外）：`src/platform/ElevatedFileReader`（pkexec 只读快照、目录 0700 / 文件 0600、失败清理、测试程序覆盖）、`main.cpp` GUI 前辅助模式、MainWindow 告警按钮 / Refresh 重新授权 / 快照生命周期；新增 `tst_elevated`（6 用例）与 UI 全链路用例，`ctest` 16/16（offscreen + Wayland）；真实 polkit 授权对话框待人工验证 |
+| 1.41 | 2026-10-01 | AI 助手（依据用户反馈） | UI 调整（spec 1.40）：「以管理员权限打开…」改为醒目的填充高亮按钮（`QPushButton#elevateButton`，主题化告警色 + 对比文字 + hover/pressed；浅色 5.62:1 / 深色 5.94:1），状态栏高度不变；`writeLayout()` 增加 `statusBar` / `elevateButton` 诊断；UI 用例补充非扁平与样式规则断言 |
+| 1.42 | 2026-10-01 | AI 助手（依据用户反馈） | 新增 §16.11 行尾 CR 与 ANSI 控制序列处理（spec 1.41：REQ-PARSE-11 修订 + REQ-PARSE-12）：`LineIndex` 支持 CR/LF/CRLF 混合与跨块/跨刷新 CRLF；新增 `core/AnsiText`（序列与控制字符清理 + SGR span）；`highlight/AnsiPalette` 浅/深 16 色（最差对比度 5.13:1 / 5.22:1）；表格与详情渲染 ANSI 前景/背景/加粗/斜体/下划线（含 256 色与真彩）；新增 `tst_ansitext`（14 用例）与 5 个 CR 行尾用例；真实 `boot.log` 由 234 行恢复为 455 行，方块与 `[0;32m` 残文消除 |

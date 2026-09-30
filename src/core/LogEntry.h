@@ -1,10 +1,12 @@
 #pragma once
 
+#include "core/AnsiText.h"
 #include "core/LogLevel.h"
 
 #include <QDateTime>
 #include <QHash>
 #include <QString>
+#include <QVector>
 
 namespace lv {
 
@@ -20,6 +22,9 @@ struct LogEntry {
     QString pid;                    ///< process id, when available
     QHash<QString, QString> extra;  ///< additional key/value columns
     QString message;                ///< full, untruncated message text
+    /// ANSI SGR styles of \a message after control sequences were stripped
+    /// (spec.md REQ-PARSE-12); empty for messages without terminal colours.
+    QVector<AnsiSpan> ansiSpans;
     int sourceIndex = 0;            ///< index of the source file in the document
     qint64 firstLine = 0;           ///< Line column value: 1-based first physical
                                     ///< line, or the 1-based entry number when the

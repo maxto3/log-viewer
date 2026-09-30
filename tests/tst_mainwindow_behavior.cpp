@@ -3,6 +3,7 @@
 #include "app/TranslationManager.h"
 #include "core/LogTableModel.h"
 #include "highlight/SnippetTokenizer.h"
+#include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
 #include "ui/DetailPane.h"
 #include "ui/FilterPanel.h"
@@ -11,6 +12,7 @@
 #include "ui/MainWindow.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
@@ -18,6 +20,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFile>
+#include <QFileInfo>
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
@@ -25,6 +28,7 @@
 #include <QMenuBar>
 #include <QMimeData>
 #include <QPainter>
+#include <QPalette>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -35,6 +39,10 @@
 #include <QTextOption>
 #include <QToolButton>
 #include <QUrl>
+
+#if defined(Q_OS_UNIX)
+#  include <unistd.h>
+#endif
 
 using namespace lv;
 
@@ -55,6 +63,14 @@ bool leaveFullScreen(MainWindow &window)
             return true;
     }
     return false;
+}
+
+/// True when \a widget resolves its text to the warning colour: red clearly
+/// dominates the other channels (light #C62828 / dark #FF6B6B, REQ-REL-01).
+bool textIsWarningColoured(const QWidget *widget)
+{
+    const QColor colour = widget->palette().color(QPalette::WindowText);
+    return colour.red() > colour.green() + 40 && colour.red() > colour.blue() + 40;
 }
 
 } // namespace
@@ -94,6 +110,10 @@ private slots:
     void droppingFilesOpensAndMerges();
     void droppingAFolderIsIgnored();
     void loadTimeLabelShowsOpenDuration();
+    void warningPersistsUntilNextSuccessfulOpen();
+    void permissionDeniedWarningKeepsDocument();
+    void controlSequencesAndCarriageReturnsAreCleaned();
+    void elevationOpensSnapshotAndCleansUp();
     void associationMenuEntryExists();
     void headersFollowLanguageSwitch();
     void resetAllKeepsDefaults();
@@ -1311,13 +1331,14 @@ void TestMainWindowBehavior::loadTimeLabelShowsOpenDuration()
     QVERIFY2(label->text().startsWith(prefix), qPrintable(label->text()));
     QVERIFY(label->text().endsWith(QStringLiteral("s")));
 
-    // The label is the left-most status widget: every permanent indicator
-    // (file name, statistics, monitor) sits to its right.
+    // The load time is the left-most permanent indicator: every other visible
+    // status widget sits to its right. The warning slot (REQ-REL-01) is
+    // reserved to its left and only appears on failures.
     QStatusBar *bar = window.statusBar();
     const int loadX = label->mapTo(bar, QPoint(0, 0)).x();
     QVERIFY(loadX < bar->width() / 2);
     for (QLabel *other : bar->findChildren<QLabel *>()) {
-        if (other == label)
+        if (other == label || !other->isVisible())
             continue;
         const int otherX = other->mapTo(bar, QPoint(0, 0)).x();
         QVERIFY2(otherX > loadX, qPrintable(QStringLiteral("%1 at %2, load label at %3")
@@ -1343,6 +1364,293 @@ void TestMainWindowBehavior::loadTimeLabelShowsOpenDuration()
     // A document without a file (demo data) does not show a load time either.
     window.loadDemoData();
     QVERIFY(label->text().isEmpty());
+}
+
+void TestMainWindowBehavior::warningPersistsUntilNextSuccessfulOpen()
+{
+    // REQ-REL-01: a failed open keeps a red warning in the status bar until the
+    // next successful open. The old implementation used a transient
+    // showMessage() (8 s timeout) that the next status text could overwrite.
+    const QString path = QDir(m_dir.path()).filePath(QStringLiteral("warning.log"));
+    {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("2026-09-28 10:00:00 INFO first\n"
+                   "2026-09-28 10:00:01 WARN second\n"
+                   "2026-09-28 10:00:02 ERROR third\n");
+    }
+
+    auto settings = makeSettings(QStringLiteral("warning"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    QLabel *warning = window.warningLabel();
+    QVERIFY(warning != nullptr);
+    QCOMPARE(warning->objectName(), QStringLiteral("statusWarning"));
+    QVERIFY(!warning->isVisible());
+
+    // The warning is themed red by the application style sheet (REQ-VIS-10);
+    // the central empty state hint uses the same colour while an error is active.
+    theme.apply();
+    QVERIFY(qApp->styleSheet().contains(QStringLiteral("QLabel#statusWarning")));
+    QVERIFY(qApp->styleSheet().contains(QStringLiteral("QLabel#emptyHint")));
+
+    QLabel *emptyHint = window.findChild<QLabel *>(QStringLiteral("emptyHint"));
+    QVERIFY(emptyHint != nullptr);
+    QVERIFY(!emptyHint->property("warning").toBool());
+    QVERIFY(!textIsWarningColoured(emptyHint));
+
+    window.openPaths({path}, QString());
+    QVERIFY(!warning->isVisible());
+    const int rows = window.logModel()->rowCount();
+    QVERIFY(rows > 0);
+
+    // A failed open shows the persistent warning and leaves the document alone.
+    const QString missing = QDir(m_dir.path()).filePath(QStringLiteral("does-not-exist.log"));
+    window.openPaths({missing}, QString());
+    QVERIFY(warning->isVisible());
+    QVERIFY(warning->toolTip().contains(QStringLiteral("does-not-exist.log")));
+    QVERIFY(emptyHint->property("warning").toBool());
+    QVERIFY(emptyHint->text().contains(QStringLiteral("does-not-exist.log")));
+    QVERIFY(textIsWarningColoured(emptyHint));
+    // No transient showMessage() text: the alert does not expire.
+    QVERIFY(window.statusBar()->currentMessage().isEmpty());
+    QTest::qWait(150);
+    QVERIFY(warning->isVisible());
+    QCOMPARE(window.logModel()->rowCount(), rows);
+
+    // Temporary status messages cover the warning briefly, then it comes back.
+    window.statusBar()->showMessage(QStringLiteral("copy feedback"), 50);
+    QTRY_VERIFY(!warning->isVisible());
+    QTRY_VERIFY(warning->isVisible());
+
+    // The next successful open clears the warning and restores the normal hint.
+    window.openPaths({path}, QString());
+    QVERIFY(!warning->isVisible());
+    QVERIFY(!emptyHint->property("warning").toBool());
+    QVERIFY(!emptyHint->text().contains(QStringLiteral("does-not-exist.log")));
+    QVERIFY(!textIsWarningColoured(emptyHint));
+}
+
+void TestMainWindowBehavior::permissionDeniedWarningKeepsDocument()
+{
+#if defined(Q_OS_UNIX)
+    if (::geteuid() == 0)
+        QSKIP("Running as root: POSIX file permissions are not enforced");
+
+    const QString denied = QDir(m_dir.path()).filePath(QStringLiteral("permission.log"));
+    {
+        QFile file(denied);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("alpha\nbeta\n");
+    }
+    QVERIFY(QFile::setPermissions(denied, QFileDevice::Permissions()));
+    if (QFileInfo(denied).isReadable())
+        QSKIP("File system does not enforce permissions for this user");
+
+    auto settings = makeSettings(QStringLiteral("permission"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    theme.apply();
+
+    const QString readable = QDir(m_dir.path()).filePath(QStringLiteral("permission-ok.log"));
+    {
+        QFile file(readable);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("2026-09-28 10:00:00 INFO first\n"
+                   "2026-09-28 10:00:01 WARN second\n");
+    }
+    window.openPaths({readable}, QString());
+    const int rows = window.logModel()->rowCount();
+    QVERIFY(rows > 0);
+
+    // Opening the unreadable file reports the permission problem and does not
+    // touch the already loaded document (REQ-REL-01).
+    window.openPaths({denied}, QString());
+    QLabel *warning = window.warningLabel();
+    QVERIFY(warning != nullptr);
+    QVERIFY(warning->isVisible());
+    QVERIFY(warning->toolTip().contains(QStringLiteral("Permission denied")));
+    QVERIFY(warning->toolTip().contains(QStringLiteral("permission.log")));
+    QLabel *emptyHint = window.findChild<QLabel *>(QStringLiteral("emptyHint"));
+    QVERIFY(emptyHint != nullptr);
+    QVERIFY(emptyHint->property("warning").toBool());
+    QVERIFY(textIsWarningColoured(emptyHint));
+    QCOMPARE(window.logModel()->rowCount(), rows);
+
+    QFile::setPermissions(denied, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+#else
+    QSKIP("POSIX file permissions are not available on this platform");
+#endif
+}
+
+void TestMainWindowBehavior::controlSequencesAndCarriageReturnsAreCleaned()
+{
+    // REQ-PARSE-11/12: CR-only line endings are indexed and ANSI sequences are
+    // stripped before display, filtering, copying and export (boot.log case).
+    const QString path = QDir(m_dir.path()).filePath(QStringLiteral("console.log"));
+    {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        const QByteArray content =
+            "boot one\r"
+            "boot two\r\n"
+            "\x1b[0;32m  OK  \x1b[0m started\r"
+            "last line";
+        QCOMPARE(file.write(content), qint64(content.size()));
+        file.close();
+    }
+
+    auto settings = makeSettings(QStringLiteral("console"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    window.openPaths({path}, QString());
+    LogTableModel *model = window.logModel();
+    QVERIFY(model != nullptr);
+    QCOMPARE(model->rowCount(), 4);
+
+    const LogEntry *entry = model->entry(2);
+    QVERIFY(entry != nullptr);
+    QCOMPARE(entry->message, QStringLiteral("  OK   started"));
+    QVERIFY(!entry->message.contains(QChar(0x1B)));
+    QVERIFY(!model->entry(0)->message.contains(QLatin1Char('\r')));
+
+    // The SGR colours survive as spans over the cleaned message (REQ-PARSE-12).
+    int messageColumn = -1;
+    for (int column = 0; column < model->columnCount(); ++column) {
+        if (model->columnKind(column) == ColumnKind::Message) {
+            messageColumn = column;
+            break;
+        }
+    }
+    QVERIFY(messageColumn >= 0);
+    const QVector<AnsiSpan> &spans = model->ansiSpans(2, messageColumn);
+    QVERIFY(!spans.isEmpty());
+    QCOMPARE(spans.first().style.foreground, 2);   // green
+    QVERIFY(spans.first().length > 0);
+}
+
+void TestMainWindowBehavior::elevationOpensSnapshotAndCleansUp()
+{
+#if defined(Q_OS_LINUX)
+    if (::geteuid() == 0)
+        QSKIP("Running as root: POSIX file permissions are not enforced");
+
+    // Stand-in for the authorized root helper: the test process is not root, so
+    // the script streams a readable payload instead of the denied file.
+    const QString payload = QDir(m_dir.path()).filePath(QStringLiteral("elevated-payload.log"));
+    {
+        QFile file(payload);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("2026-09-28 10:00:00 INFO elevated one\n"
+                   "2026-09-28 10:00:01 WARN elevated two\n");
+    }
+    const QString helper = QDir(m_dir.path()).filePath(QStringLiteral("elevated-helper.sh"));
+    {
+        QFile file(helper);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write(QStringLiteral("#!/bin/sh\ncat \"%1\"\n").arg(payload).toUtf8());
+    }
+    QVERIFY(QFile::setPermissions(helper, QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                          | QFileDevice::ExeOwner));
+
+    const QString denied = QDir(m_dir.path()).filePath(QStringLiteral("elevated-denied.log"));
+    {
+        QFile file(denied);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("secret\n");
+    }
+    QVERIFY(QFile::setPermissions(denied, QFileDevice::Permissions()));
+    if (QFileInfo(denied).isReadable())
+        QSKIP("File system does not enforce permissions for this user");
+
+    ElevatedFileReader::setProgramOverrideForTesting(helper);
+    struct OverrideGuard {
+        ~OverrideGuard() { ElevatedFileReader::setProgramOverrideForTesting(QString()); }
+    } guard;
+
+    auto settings = makeSettings(QStringLiteral("elevated"), false);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    theme.apply();
+
+    // The permission failure offers the elevated open (REQ-REL-04).
+    window.openPaths({denied}, QString());
+    QPushButton *button = window.elevateButton();
+    QVERIFY(button != nullptr);
+    QVERIFY(button->isVisible());
+    // The offer is a prominent filled button (REQ-REL-04 / REQ-VIS-10).
+    QVERIFY(!button->isFlat());
+    QVERIFY(qApp->styleSheet().contains(QStringLiteral("QPushButton#elevateButton")));
+
+    button->click();
+    QVERIFY(window.logModel()->rowCount() >= 2);
+    QVERIFY(!window.warningLabel()->isVisible());
+    QVERIFY(!button->isVisible());
+
+    // The document is backed by a private snapshot and announced as such.
+    const QString snapshot = window.elevatedSnapshotPath();
+    QVERIFY(!snapshot.isEmpty());
+    QVERIFY(QFile::exists(snapshot));
+    QVERIFY(!window.monitorAction()->isEnabled());
+    QLabel *docLabel = window.findChild<QLabel *>(QStringLiteral("docLabel"));
+    QVERIFY(docLabel != nullptr);
+    QVERIFY2(docLabel->text().contains(QStringLiteral("(elevated snapshot)")),
+             qPrintable(docLabel->text()));
+
+    // Refresh re-runs the authorization and reloads the original file.
+    {
+        QFile file(payload);
+        QVERIFY(file.open(QIODevice::Append | QIODevice::Text));
+        file.write("2026-09-28 10:00:02 ERROR elevated three\n");
+    }
+    QAction *refreshAction = nullptr;
+    QMenu *fileMenu = window.menuBar()->actions().value(0)->menu();
+    QVERIFY(fileMenu != nullptr);
+    for (QAction *action : fileMenu->actions()) {
+        if (action->shortcut() == QKeySequence(QKeySequence::Refresh)) {
+            refreshAction = action;
+            break;
+        }
+    }
+    QVERIFY(refreshAction != nullptr);
+    refreshAction->trigger();
+    QTRY_COMPARE(window.logModel()->rowCount(), 3);
+    QVERIFY(window.elevatedSnapshotPath() != snapshot);
+    QVERIFY(!QFile::exists(snapshot));
+    const QString refreshedSnapshot = window.elevatedSnapshotPath();
+    QVERIFY(QFile::exists(refreshedSnapshot));
+
+    // Closing the document removes the snapshot (REQ-REL-04).
+    QAction *closeAction = nullptr;
+    for (QAction *action : fileMenu->actions()) {
+        if (action->shortcut() == QKeySequence(QKeySequence::Close)) {
+            closeAction = action;
+            break;
+        }
+    }
+    QVERIFY(closeAction != nullptr);
+    closeAction->trigger();
+    QVERIFY(window.elevatedSnapshotPath().isEmpty());
+    QVERIFY(!QFile::exists(refreshedSnapshot));
+
+    QFile::setPermissions(denied, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+#else
+    QSKIP("POSIX file permissions are not available on this platform");
+#endif
 }
 
 void TestMainWindowBehavior::headersFollowLanguageSwitch()

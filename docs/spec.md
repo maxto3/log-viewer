@@ -116,7 +116,8 @@
 | REQ-PARSE-08 | 级别归一化为 TRACE / DEBUG / INFO / NOTICE / WARN / ERROR / FATAL / OTHER，并保留原始文本；syslog 数字优先级按 RFC5424 映射 | 必须 |
 | REQ-PARSE-09 | 单文件默认行数上限 2,000,000 行（Settings 可调）；超过上限时弹窗提示"已加载前 N 行"，并提供 **Continue loading all** 与 **Cancel** 选项 | 必须 |
 | REQ-PARSE-10 | 解析失败的行不丢弃：整行作为 Message 显示，级别记为 OTHER | 必须 |
-| REQ-PARSE-11 | 换行符 CRLF / LF / 混合 均可正确索引与显示（Windows 与 Linux 生成的日志混用场景） | 必须 |
+| REQ-PARSE-11 | 换行符 **LF / CRLF / CR（单独 `\r`）/ 混合** 均可正确索引与显示（Windows、Linux、控制台引导日志生成的混合场景）；`\r\n` 视为一个终止符，`\r\r\n` 视为「空行 + 终止符」 | 必须 |
+| REQ-PARSE-12 | 控制字符与 ANSI 转义序列：显示前剥离 ANSI CSI / OSC / 其它 ESC 序列以及 C0/C1 控制字符（保留 TAB 与 LF），不得把 ESC、`\r` 等渲染为方块或 `[0;32m` 残文；**SGR 样式按终端语义渲染**——前景/背景色（含 8/16 色与 `38;5;n`、`38;2;r;g;b` 扩展色）、加粗、斜体、下划线映射到表格与详情面板的等价样式（颜色随浅/深主题选择可读调色板，对比度 ≥ 4.5:1）；光标/窗口/标题等控制序列一律剥离；清理后的文本为查找、过滤、复制与导出的唯一口径（不保留颜色信息，原始文件只读不改） | 必须 |
 
 ### REQ-FIND 查找（高亮，不隐藏）
 
@@ -243,6 +244,7 @@
 | REQ-CLI-08 | 命令行打开文件时，界面语言与主题仍遵循设置（`--lang` 除外） | 必须 |
 | REQ-CLI-09 | `--demo`：载入内置演示数据（覆盖各日志级别、超长消息、内嵌 JSON/XML/YAML 片段），用于界面自检与截图，不参与正式功能 | 可选 |
 | REQ-CLI-10 | `--register-association` / `--unregister-association`：把 **`.log`** 关联注册/撤销到**本可执行文件自身**（见 REQ-ASSOC-06/07），成功退出码 0、失败 1（原因写标准错误，不弹 GUI 对话框）；`--force` 覆盖已有的他人关联且不再提示，默认覆盖前会把原值备份下来供撤销还原；非 Windows 上提示改用 `xdg-mime` 并返回 1 | 应该 |
+| REQ-CLI-11 | **内部辅助模式** `--elevated-stream <绝对路径>`（不列入 `--help`）：仅供 REQ-REL-04 的提权流程经 `pkexec` 调用，必须在**任何 GUI 初始化之前**执行（无显示环境也能工作）；把单个常规文件的原始字节写到标准输出（只读、不写磁盘、不修改文件、不经过 shell）；非 3 个参数返回 2，文件缺失 / 目录 / 非普通文件 / 读失败返回 1（原因写标准错误） | 应该 |
 
 ### REQ-ASSOC 文件关联（双平台）
 
@@ -268,7 +270,7 @@
 | REQ-PLAT-05 | 路径处理全部使用 Qt API；文件扩展名与格式映射大小写不敏感（`.LOG` 与 `.log` 等价）；不依赖文件名排序规则 | 必须 |
 | REQ-PLAT-06 | 高 DPI：在 100%/125%/150%/200% 缩放下布局不错位；默认窗口尺寸按可用屏幕自适应收缩（不低于逻辑 1024×600） | 必须 |
 | REQ-PLAT-07 | Wayland 与 X11 均可运行（不调用平台专有图形 API）；如遇环境问题允许通过 `QT_QPA_PLATFORM` 覆盖，属可接受限制 | 应该 |
-| REQ-PLAT-08 | 不调用平台专有外部进程（如 `tasklist`/`ps`）；不依赖 shell 特性 | 必须 |
+| REQ-PLAT-08 | 不调用平台专有外部进程（如 `tasklist`/`ps`）；不依赖 shell 特性。**唯一例外**：Linux 提权读取（REQ-REL-04）允许调用系统认证助手 `pkexec`——以参数数组直接启动（不经过 shell）、目标程序取本应用的绝对路径、参数固定为 `--elevated-stream <路径>`；该能力为可选，`pkexec` 缺失时降级，不影响其它功能 | 必须 |
 | REQ-PLAT-09 | 版本信息、About 页面与日志输出中标注当前平台与构建类型，便于问题定位 | 应该 |
 | REQ-PLAT-10 | Linux 侧代码路径按可移植性要求编写；v1 原始计划不做构建与运行验证，**1.36 起已由用户在 Debian 原生环境完成构建、测试与打包验证**；未验证状态必须在文档中明确标注（历史状态见 §1.3、AC-16/AC-17、修订记录） | 必须 |
 
@@ -304,14 +306,15 @@
 | REQ-PERF-02 | 内存预算：100 万行索引 + 10 万条解析缓存 ≤ 250 MB；监控模式受 REQ-MON-06 约束 |
 | REQ-PERF-03 | 所有耗时操作（建索引、过滤、查找、导出）在工作线程执行，UI 线程不阻塞；带进度显示与取消能力 |
 | REQ-PERF-04 | 打开 > 500 MB 的文件时给出耗时预估提示（可关闭） |
-| REQ-REL-01 | 文件被占用/无权限/被删除时给出明确错误提示，且不影响已加载内容 |
+| REQ-REL-01 | 文件被占用/无权限/被删除时给出明确错误提示：失败告警在状态栏左下角**与空状态中央提示区**以红色持久显示（保留到下一条告警替换、下一次成功打开或程序退出；不因超时或后续临时状态消息而消失），且不影响已加载内容 |
 | REQ-REL-02 | 不修改、不写回被打开的日志文件（只读）；导出的结果写入用户指定位置 |
 | REQ-REL-03 | 异常日志内容（超长行、二进制字节、空文件、无末尾换行）不得导致崩溃 |
+| REQ-REL-04 | Linux 可选提权打开：对无读取权限的常规文件，红色告警旁提供**醒目的高亮按钮**「以管理员权限打开…」（主题化填充色 + 对比文字，符合 REQ-VIS-10 对比度）；经系统认证助手（`pkexec`/polkit）授权后以**只读快照**方式打开——快照写入当前用户私有临时目录（目录 0700、文件 0600，优先 `XDG_RUNTIME_DIR`，回退系统临时目录）；授权进程只读源文件并仅向 stdout 输出原始字节，不写任何用户路径、不经过 shell；快照在文档关闭 / 被替换 / 程序退出时删除；提权文档禁用 Monitor，Refresh 重新授权并刷新快照；`pkexec` 或认证代理不可用、用户取消授权、读取失败时保留红色告警并给出手工处理指引，且不影响已加载内容 |
 | REQ-MAINT-01 | 单元测试覆盖：解析器（每种格式含正/负例）、匹配器、时间解析、片段检测、行索引、监控追加/轮转、命令行参数解析、编码回退 |
 | REQ-MAINT-02 | 使用附件真实样本作为回归测试数据：9187 行、DEBUG 9121 / INFO 23 / ERROR 43、最长行 398 字符、170 行含中文（UTF-8 校验）、续行数 0 |
 | REQ-MAINT-03 | 提交信息与代码注释英文；界面字符串全部可翻译；不引入未使用依赖 |
 | REQ-MAINT-04 | 文档：`README.md`（英文）与 `README.zh_CN.md`（中文），含 Windows 与 Linux 双平台的构建、运行、打包、快捷键、支持的格式与已知限制（含"Linux 路径未经运行验证"声明） |
-| REQ-MAINT-05 | 测试代码可移植：使用临时目录与 Qt API，不依赖平台特定路径；测试同时覆盖 LF 与 CRLF 样本 |
+| REQ-MAINT-05 | 测试代码可移植：使用临时目录与 Qt API，不依赖平台特定路径；测试同时覆盖 LF、CRLF 与 CR 样本 |
 
 ## 7. 范围外（Out of Scope）
 
@@ -414,3 +417,8 @@
 | 1.34 | 2026-09-29 | AI 助手（依据用户反馈） | 新增 **REQ-UI-15**：状态栏左下角显示最近一次打开日志的耗时（自适应 `s` / `min` / `h` 分量格式，排除大文件对话框等待时间；Refresh 更新、关闭文档或 `--demo` 清除、随语言切换重译）；新增 `core/DurationFormat` 与 `tst_duration`，UI 用例覆盖标签位置与清除；REQ-UI-09 与 AC-19 同步 |
 | 1.35 | 2026-09-29 | AI 助手（依据用户反馈） | 修复「发行包解压到 `C:\log-viewer` 后注册脚本路径失效」：① 注册逻辑**移入可执行文件**（新增 `src/platform/FileAssociation`，用 Win32 注册表 API 写 HKCU），CLI 新增 `--register-association` / `--unregister-association` / `--force`（REQ-CLI-10、REQ-ASSOC-06），路径取 `applicationFilePath()` 故天然自定位（REQ-ASSOC-07）；② 注册项补齐 `DefaultIcon`、`.log\OpenWithProgids`、`Applications\...\SupportedTypes`（REQ-ASSOC-08）；③ `package.ps1` 把 `register-association.ps1` 复制到包内与 exe 同级，脚本改为转发入口且默认调用同目录 exe；④ 新增 Settings ▸ File Association 勾选项（REQ-UI-16）与 AC-20；⑤ **只注册 `.log`**，移除 `.txt`/`-IncludeTxt` 一整套（OPEN-11 废止）；新增 `tst_association`（纯函数 + 测试专用扩展名的注册/撤销往返） |
 | 1.36 | 2026-09-30 | AI 助手（Linux 验证） | Linux 原生验证（Debian forky/sid、GCC 16.2、Qt 6.11.2）：`scripts/build.sh` 干净构建 111/111、`ctest` 15/15（KDE Wayland 与 `QT_QPA_PLATFORM=offscreen`）、CLI `--version/--help/--format list`、`--demo`/真实日志/`zh_CN` 冒烟与 `LOGVIEWER_DUMP_LAYOUT` 自检、`package-deb.sh` 产出并核对 `.deb` 内容、`register-association.sh` 在隔离 HOME 注册/撤销。验证中修复：① `tst_highlight` 缺少 `<QElapsedTimer>` 导致 GCC 编译失败；② `autoFitColumns()` 缩放列时未考虑 `QHeaderView::minimumSectionSize`，Qt 静默夹宽导致消息列跌破 40%（REQ-TABLE-05），现以 header 最小节宽为下限并把超预算宽度从最宽列收回；③ `tst_mainwindow_behavior` 适配 Wayland 异步语义（初始 configure 覆盖 resize、全屏退出需确认）并固定测试窗口尺寸使 offscreen 800×800 屏幕可用；④ `CMakeLists.txt` 在构建目录生成 `log-viewer.desktop`（`register-association.sh` 依赖它）；⑤ 关联脚本按 `XDG_CONFIG_HOME` 先建目录（`xdg-mime` 在全新账户不建目录，`text/x-log` 注册会失败）。README/README.zh_CN 的 Linux 依赖补充 `qt6-tools-dev` 并更新验证状态；OPEN-07/OPEN-08 关闭；AC-16 判定通过、AC-17 部分通过（产物核对，未系统安装） |
+| 1.37 | 2026-10-01 | AI 助手（依据用户反馈） | 修复「打开无权限日志时没有报警」：失败提示原先仅为状态栏 8 秒临时消息 + 空状态文字，会被后续临时状态消息覆盖且超时消失。现改为**状态栏左下角红色持久告警**（新增 `ui/StatusWarningLabel`：主题化红色、过长路径中间省略 + tooltip 全文、保留到下一条告警替换或下一次成功打开；关闭文档与程序退出时随文档状态处理）；权限错误文案由「File is not readable」改为「Permission denied: cannot read '%1'」；REQ-REL-01 补充持久可见要求；新增 2 条 UI 用例（告警持久性与临时消息恢复、权限错误不影响已加载文档）。提权读取（pkexec）留作第二期，需先修订 REQ-PLAT-08 |
+| 1.38 | 2026-10-01 | AI 助手（依据用户反馈） | UI 微调：空状态中央提示（`emptyHint`）在显示错误信息时与状态栏告警同样显示为主题化红色（动态属性 `warning` + `QLabel#emptyHint[warning="true"]` 样式规则；成功打开后恢复常规提示色）；错误与常规提示文案统一由 `updateEmptyHint()` 生成；REQ-REL-01 同步补充空状态提示区 |
+| 1.39 | 2026-10-01 | AI 助手（依据用户指示，第二期） | 新增 Linux 提权打开（一期预留的第二期）：REQ-REL-04（pkexec 只读快照：私有临时目录 0700/0600、root 只读并仅写 stdout、关闭/替换/退出即删、禁用 Monitor、Refresh 重新授权、失败降级并保留红色告警）、REQ-CLI-11（内部辅助模式 `--elevated-stream`，GUI 初始化前执行、固定参数、不经 shell）、REQ-PLAT-08 增加 `pkexec` 例外条款；新增 `src/platform/ElevatedFileReader` 与 `tst_elevated` |
+| 1.40 | 2026-10-01 | AI 助手（依据用户反馈） | UI 调整：状态栏「以管理员权限打开…」由扁平按钮改为**醒目的高亮按钮**（`QPushButton#elevateButton`：填充主题化告警色、对比文字、加粗、圆角、hover/pressed 状态；浅色 `#C62828`+白字 5.62:1、深色 `#FF6B6B`+深色字 5.94:1），状态栏高度不因按钮出现而变化（实测 25 px）；补充 `LOGVIEWER_DUMP_LAYOUT` 的 `statusBar` / `elevateButton` 诊断输出与 UI 用例断言（非扁平、样式规则存在）；REQ-REL-04 同步 |
+| 1.41 | 2026-10-01 | AI 助手（依据用户反馈） | 修复「打开 `/var/log/boot.log` 时特殊字符显示为方块、行数偏少」：REQ-PARSE-11 补充**单独 CR** 换行（实测 221 个 `\r` 被吞、455 行只显示 234 行）；新增 **REQ-PARSE-12**（剥离 ANSI CSI/OSC/ESC 与 C0/C1 控制字符，保留 TAB/LF；SGR 前景/背景/加粗/斜体/下划线按终端语义渲染，含 256 色与真彩，色彩随主题并提供 ≥4.5:1 可读调色板；查找/过滤/复制/导出统一使用清理后文本）；REQ-MAINT-05 测试样本补充 CR 变体 |

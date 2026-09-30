@@ -115,8 +115,10 @@ void DetailPane::setEntry(const LogEntry *entry, const QString &fileName)
     m_entry = *entry;
     m_fileName = fileName;
     m_message->setPlainText(m_entry.message);
-    if (m_highlighter)
+    if (m_highlighter) {
+        m_highlighter->setAnsiSpans(m_entry.ansiSpans);
         m_highlighter->setContent(m_entry.message);
+    }
     rebuildFields();
     updateButtons();
 }
@@ -143,6 +145,8 @@ void DetailPane::setMessageFont(const QFont &font)
 void DetailPane::setDarkTheme(bool dark)
 {
     m_dark = dark;
+    if (m_highlighter)
+        m_highlighter->setDarkTheme(dark);
     // The message area uses the palette, so a repaint is enough for now;
     // dedicated code block colours are added with the syntax highlighter (M3).
     m_message->viewport()->update();

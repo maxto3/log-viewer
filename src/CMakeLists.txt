@@ -10,11 +10,15 @@ set(LOGVIEWER_CORE_SOURCES
 
     platform/EncodingBackend.cpp
     platform/EncodingBackend.h
+    platform/ElevatedFileReader.cpp
+    platform/ElevatedFileReader.h
     platform/FileAssociation.cpp
     platform/FileAssociation.h
     platform/PlatformInfo.cpp
     platform/PlatformInfo.h
 
+    core/AnsiText.cpp
+    core/AnsiText.h
     core/ColumnKind.h
     core/DurationFormat.cpp
     core/DurationFormat.h
@@ -54,6 +58,8 @@ set(LOGVIEWER_CORE_SOURCES
     core/formats/WindowsFormats.cpp
     core/formats/WindowsFormats.h
 
+    highlight/AnsiPalette.cpp
+    highlight/AnsiPalette.h
     highlight/HighlightTheme.cpp
     highlight/HighlightTheme.h
     highlight/LevelPalette.cpp
@@ -92,6 +98,8 @@ set(LOGVIEWER_UI_SOURCES
     ui/LogTableView.h
     ui/MainWindow.cpp
     ui/MainWindow.h
+    ui/StatusWarningLabel.cpp
+    ui/StatusWarningLabel.h
 )
 
 # Widgets library, used by the application as well as by the UI behaviour tests.

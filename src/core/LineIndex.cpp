@@ -25,6 +25,7 @@ bool LineIndex::build(const QString &path, int maxLines, QString *errorMessage)
     m_fileSize = 0;
     m_indexedBytes = 0;
     m_lastLineIncomplete = false;
+    m_skipLeadingLf = false;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -63,6 +64,7 @@ bool LineIndex::refresh(const QString &path, int maxLines, QString *errorMessage
         m_truncated = false;
         m_indexedBytes = 0;
         m_lastLineIncomplete = false;
+        m_skipLeadingLf = false;
         m_fileSize = size;
         if (!scan(file, 0, maxLines, errorMessage))
             return false;
@@ -105,8 +107,21 @@ bool LineIndex::scan(QFile &file, qint64 startOffset, int maxLines, QString *err
     std::array<char, kChunkSize> buffer{};
     qint64 offset = startOffset;
     qint64 lineStart = startOffset;
-    bool lastWasCarriageReturn = false;
+    // A '\r' ends a line immediately; the LF of a CRLF pair is swallowed when it
+    // arrives afterwards. The state survives chunk and refresh boundaries
+    // (m_skipLeadingLf), so a writer that flushes "\r" and "\n" separately is
+    // still indexed as one terminator.
+    bool skipLeadingLf = m_skipLeadingLf;
     bool done = false;
+
+    const auto endLine = [&](qint64 terminatorOffset) {
+        const qint64 length = terminatorOffset - lineStart;
+        m_starts.push_back(lineStart);
+        m_lengths.push_back(clampLength(length));
+        m_maxLineLength = qMax(m_maxLineLength, static_cast<int>(length));
+        m_indexedBytes = terminatorOffset + 1;
+        lineStart = terminatorOffset + 1;
+    };
 
     while (!done) {
         const qint64 read = file.read(buffer.data(), buffer.size());
@@ -114,24 +129,24 @@ bool LineIndex::scan(QFile &file, qint64 startOffset, int maxLines, QString *err
             break;
         for (qint64 i = 0; i < read; ++i) {
             const char c = buffer[static_cast<size_t>(i)];
-            if (c == '\n') {
-                const qint64 absolute = offset + i;
-                qint64 length = absolute - lineStart;
-                if (length > 0 && lastWasCarriageReturn)
-                    --length;   // strip the '\r' of a CRLF pair
-                m_starts.push_back(lineStart);
-                m_lengths.push_back(clampLength(length));
-                m_maxLineLength = qMax(m_maxLineLength, static_cast<int>(length));
-                m_indexedBytes = absolute + 1;
-                lineStart = absolute + 1;
-                lastWasCarriageReturn = false;
+            const qint64 absolute = offset + i;
+            if (skipLeadingLf) {
+                skipLeadingLf = false;
+                if (c == '\n') {
+                    // Second half of a CRLF pair whose CR already ended the line.
+                    lineStart = absolute + 1;
+                    m_indexedBytes = absolute + 1;
+                    continue;
+                }
+            }
+            if (c == '\n' || c == '\r') {
+                endLine(absolute);
+                skipLeadingLf = (c == '\r');
                 if (static_cast<int>(m_starts.size()) >= lineBudget) {
                     m_truncated = true;
                     done = true;
                     break;
                 }
-            } else {
-                lastWasCarriageReturn = (c == '\r');
             }
         }
         offset += read;
@@ -139,6 +154,7 @@ bool LineIndex::scan(QFile &file, qint64 startOffset, int maxLines, QString *err
             break;
     }
 
+    m_skipLeadingLf = skipLeadingLf;
     return true;
 }
 

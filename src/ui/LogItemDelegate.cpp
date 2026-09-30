@@ -1,6 +1,7 @@
 #include "ui/LogItemDelegate.h"
 
 #include "core/LogTableModel.h"
+#include "highlight/AnsiPalette.h"
 #include "highlight/LevelPalette.h"
 
 #include <QApplication>
@@ -213,10 +214,12 @@ void LogItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
     CellFormats formats;
     formats.keywordBackground = m_keywordBackground;
     formats.keywordForeground = m_keywordForeground;
+    formats.dark = m_dark;
     if (const auto *model = qobject_cast<const LogTableModel *>(index.model())) {
         formats.keywords = model->findRanges(index.row(), index.column());
         if (kind == ColumnKind::Message) {
             formats.tokens = &model->tokenSpans(index.row(), index.column());
+            formats.ansi = &model->ansiSpans(index.row(), index.column());
             formats.theme = m_theme;
         }
     }
@@ -277,6 +280,32 @@ QVector<QTextLayout::FormatRange> LogItemDelegate::buildFormats(const CellFormat
                 continue;
             QTextCharFormat format;
             format.setForeground(formats.theme->color(span.kind));
+            result.append({start - paragraphStart, end - start, format});
+        }
+    }
+
+    // Terminal colours from the source log (REQ-PARSE-12) override snippet
+    // colours, but the Find highlight still wins below.
+    if (formats.ansi) {
+        for (const AnsiSpan &span : *formats.ansi) {
+            const int start = qMax(span.start, paragraphStart);
+            const int end = qMin(span.start + span.length, paragraphEnd);
+            if (end <= start)
+                continue;
+            QTextCharFormat format;
+            if (span.style.hasRgbForeground)
+                format.setForeground(span.style.rgbForeground);
+            else if (span.style.foreground >= 0)
+                format.setForeground(AnsiPalette::color(span.style.foreground, formats.dark));
+            if (span.style.hasRgbBackground)
+                format.setBackground(span.style.rgbBackground);
+            else if (span.style.background >= 0)
+                format.setBackground(AnsiPalette::color(span.style.background, formats.dark));
+            if (span.style.bold)
+                format.setFontWeight(QFont::Bold);
+            format.setFontItalic(span.style.italic);
+            format.setFontUnderline(span.style.underline);
+            format.setFontStrikeOut(span.style.strikeOut);
             result.append({start - paragraphStart, end - start, format});
         }
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AnsiText.h"
 #include "core/ColumnKind.h"
 #include "core/Matcher.h"
 #include "highlight/HighlightTheme.h"
@@ -78,10 +79,12 @@ private:
     /// Everything needed to colour one cell.
     struct CellFormats {
         const QVector<TokenSpan> *tokens = nullptr;
+        const QVector<AnsiSpan> *ansi = nullptr;
         const HighlightTheme *theme = nullptr;
         QVector<MatchRange> keywords;
         QColor keywordBackground;
         QColor keywordForeground;
+        bool dark = false;
     };
 
     QFont cellFont() const;

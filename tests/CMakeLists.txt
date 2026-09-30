@@ -30,6 +30,8 @@ set(LOGVIEWER_TESTS
     tst_mainwindow_behavior.cpp
     tst_duration.cpp
     tst_association.cpp
+    tst_elevated.cpp
+    tst_ansitext.cpp
 )
 
 foreach(test_source IN LISTS LOGVIEWER_TESTS)

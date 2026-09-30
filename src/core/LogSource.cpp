@@ -1,5 +1,6 @@
 #include "core/LogSource.h"
 
+#include "core/AnsiText.h"
 #include "core/LogFormatRegistry.h"
 #include "core/TimestampParser.h"
 #include "platform/EncodingBackend.h"
@@ -51,7 +52,8 @@ std::shared_ptr<LogSource> LogSource::open(const QString &path, const QString &f
     }
     if (!info.isReadable()) {
         if (errorMessage)
-            *errorMessage = QCoreApplication::translate("LogSource", "File is not readable: %1").arg(path);
+            *errorMessage = QCoreApplication::translate("LogSource", "Permission denied: cannot read '%1'")
+                                .arg(path);
         return nullptr;
     }
 
@@ -72,7 +74,7 @@ std::shared_ptr<LogSource> LogSource::open(const QString &path, const QString &f
     sample.reserve(sampleCount);
     source->beginBulkRead();
     for (int row = 0; row < sampleCount; ++row)
-        sample.append(source->readLine(row));
+        sample.append(AnsiText::strip(source->readLine(row)));
     source->endBulkRead();
 
     const LogFormatRegistry &registry = LogFormatRegistry::instance();
@@ -116,7 +118,7 @@ void LogSource::buildEntryIndex(int fromPhysicalLine, int maxLines)
         QStringList allLines;
         allLines.reserve(m_index->lineCount());
         for (int i = 0; i < m_index->lineCount(); ++i)
-            allLines << readLine(i);
+            allLines << AnsiText::strip(readLine(i));
 
         std::vector<LogEntry> entries;
         if (m_format->parseDocument(allLines, entries) && !entries.empty()
@@ -133,7 +135,8 @@ void LogSource::buildEntryIndex(int fromPhysicalLine, int maxLines)
     const int lines = m_index->lineCount();
     const int limit = maxLines > 0 ? maxLines : lines;
     for (int line = fromPhysicalLine; line < lines && line < limit; ++line) {
-        const QString text = readLine(line);
+        // Control sequences are stripped before format detection (REQ-PARSE-12).
+        const QString text = AnsiText::strip(readLine(line));
         const bool isEntryStart = !m_format || m_format->startsEntry(text);
 
         if (isEntryStart) {
@@ -295,9 +298,14 @@ void LogSource::parseEntryAt(int row, LogEntry &entry) const
     const int first = m_entryStart[static_cast<size_t>(row)];
     const int count = m_entryLines[static_cast<size_t>(row)];
     QStringList lines;
+    QStringList rawLines;
     lines.reserve(count);
-    for (int i = 0; i < count; ++i)
-        lines << readLine(first + i);
+    rawLines.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        const QString raw = readLine(first + i);
+        rawLines << raw;
+        lines << AnsiText::strip(raw);   // clean text feeds the format parser
+    }
 
     const bool parsed = m_format && m_format->parseEntry(lines, first + 1, m_mergeContinuations, entry);
     if (!parsed) {
@@ -310,6 +318,32 @@ void LogSource::parseEntryAt(int row, LogEntry &entry) const
         : first + 1;     // first physical line of the entry
     entry.physicalLines = count;
     entry.sourceIndex = 0;
+
+    // ANSI SGR styles (REQ-PARSE-12): parsed from the raw lines and mapped onto
+    // the parsed message; formats usually strip leading fields from the line, so
+    // the message is located inside the cleaned text.
+    const QString rawJoined = rawLines.join(QLatin1Char('\n'));
+    if (rawJoined.contains(QChar(0x1B))) {
+        const AnsiTextResult styled = AnsiText::process(rawJoined);
+        int offset = -1;
+        if (!entry.message.isEmpty()) {
+            offset = styled.text == entry.message ? 0 : styled.text.indexOf(entry.message);
+        }
+        if (offset >= 0) {
+            const int messageEnd = offset + entry.message.size();
+            QVector<AnsiSpan> spans;
+            for (AnsiSpan span : styled.spans) {
+                const int start = qMax(span.start, offset);
+                const int end = qMin(span.start + span.length, messageEnd);
+                if (end <= start)
+                    continue;
+                span.start = start - offset;
+                span.length = end - start;
+                spans.append(span);
+            }
+            entry.ansiSpans = spans;
+        }
+    }
 }
 
 const LogEntry &LogSource::entryAt(int row) const

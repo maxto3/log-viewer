@@ -259,6 +259,49 @@ Remove the association with --unregister-association.</source>
     </message>
 </context>
 <context>
+    <name>ElevatedFileReader</name>
+    <message>
+        <source>The system authentication helper (pkexec) is not available. Grant read access manually (for example add your user to the &quot;adm&quot; group) or copy the file to a readable location.</source>
+        <translation>系统认证助手（pkexec）不可用。请手工授予读取权限（例如把当前用户加入 &quot;adm&quot; 组），或把文件复制到可读取的位置。</translation>
+    </message>
+    <message>
+        <source>Reading files with elevated privileges is only available on Linux.</source>
+        <translation>以管理员权限读取文件仅在 Linux 上可用。</translation>
+    </message>
+    <message>
+        <source>Authentication was cancelled or failed.</source>
+        <translation>认证被取消或失败。</translation>
+    </message>
+    <message>
+        <source>Not authorized to read '%1' with elevated privileges.</source>
+        <translation>未获授权以管理员权限读取“%1”。</translation>
+    </message>
+    <message>
+        <source>The authentication helper failed (exit code %1).</source>
+        <translation>认证助手执行失败（退出码 %1）。</translation>
+    </message>
+    <message>
+        <source>Not a regular file: %1</source>
+        <translation>不是常规文件：%1</translation>
+    </message>
+    <message>
+        <source>Cannot create the private snapshot directory: %1</source>
+        <translation>无法创建私有快照目录：%1</translation>
+    </message>
+    <message>
+        <source>Cannot create the temporary snapshot: %1</source>
+        <translation>无法创建临时快照：%1</translation>
+    </message>
+    <message>
+        <source>Cannot start the system authentication helper: %1</source>
+        <translation>无法启动系统认证助手：%1</translation>
+    </message>
+    <message>
+        <source>Cannot write the temporary snapshot: %1</source>
+        <translation>无法写入临时快照：%1</translation>
+    </message>
+</context>
+<context>
     <name>LogSource</name>
     <message>
         <location filename="../core/LogSource.cpp" line="29"/>
@@ -266,9 +309,9 @@ Remove the association with --unregister-association.</source>
         <translation>文件不存在：%1</translation>
     </message>
     <message>
-        <location filename="../core/LogSource.cpp" line="34"/>
-        <source>File is not readable: %1</source>
-        <translation>文件不可读：%1</translation>
+        <location filename="../core/LogSource.cpp" line="54"/>
+        <source>Permission denied: cannot read '%1'</source>
+        <translation>权限不足，无法读取：%1</translation>
     </message>
     <message>
         <location filename="../core/LogSource.cpp" line="59"/>
@@ -801,6 +844,26 @@ Run &quot;log-viewer --demo&quot; to preview the interface with sample data.</so
         <location filename="../ui/MainWindow.cpp" line="490"/>
         <source>Open Log File…</source>
         <translation>打开日志文件…</translation>
+    </message>
+    <message>
+        <source>Open as Administrator…</source>
+        <translation>以管理员权限打开…</translation>
+    </message>
+    <message>
+        <source>(elevated snapshot)</source>
+        <translation>（已提权快照）</translation>
+    </message>
+    <message>
+        <source>Read &quot;%1&quot; with administrator rights and open a read-only snapshot.</source>
+        <translation>以管理员权限读取“%1”，并以只读快照方式打开。</translation>
+    </message>
+    <message>
+        <source>Could not open &quot;%1&quot; with elevated privileges: %2</source>
+        <translation>无法以管理员权限打开“%1”：%2</translation>
+    </message>
+    <message>
+        <source>Opened a read-only snapshot of &quot;%1&quot; with elevated privileges.</source>
+        <translation>已通过管理员权限打开“%1”的只读快照。</translation>
     </message>
     <message>
         <location filename="../ui/MainWindow.cpp" line="492"/>

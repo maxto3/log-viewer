@@ -10,12 +10,14 @@
 #include "core/LogWatcher.h"
 #include "core/Matcher.h"
 #include "highlight/HighlightTheme.h"
+#include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
 #include "ui/AboutDialog.h"
 #include "ui/DemoData.h"
 #include "ui/DetailPane.h"
 #include "ui/FilterPanel.h"
 #include "ui/LogTableView.h"
+#include "ui/StatusWarningLabel.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -43,6 +45,7 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QStyle>
 #include <QTextStream>
 #include <QToolButton>
 #include <QUrl>
@@ -128,7 +131,10 @@ void MainWindow::restoreWindowGeometry()
     }
 }
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow()
+{
+    releaseSnapshot();
+}
 
 void MainWindow::createActions()
 {
@@ -393,6 +399,7 @@ void MainWindow::createCentralWidget()
     m_emptyTitle->setFont(boldFont(m_emptyTitle->font()));
     emptyLayout->addWidget(m_emptyTitle);
     m_emptyHint = new QLabel(m_emptyState);
+    m_emptyHint->setObjectName(QStringLiteral("emptyHint"));
     m_emptyHint->setAlignment(Qt::AlignCenter);
     m_emptyHint->setWordWrap(true);
     emptyLayout->addWidget(m_emptyHint);
@@ -426,6 +433,21 @@ void MainWindow::createCentralWidget()
 
 void MainWindow::createStatusBar()
 {
+    // Left-most indicator: persistent failure warnings (REQ-REL-01). It stays
+    // hidden until the first error and never disappears on a timeout.
+    m_warningLabel = new StatusWarningLabel(statusBar());
+    statusBar()->addWidget(m_warningLabel);
+
+    // Optional follow-up action for permission failures (REQ-REL-04): opens the
+    // file through the system authentication helper as a read-only snapshot.
+    // Filled warning colour (theme style sheet) so it stands out in the bar.
+    m_elevateButton = new QPushButton(tr("Open as Administrator…"), statusBar());
+    m_elevateButton->setObjectName(QStringLiteral("elevateButton"));
+    m_elevateButton->setCursor(Qt::PointingHandCursor);
+    m_elevateButton->hide();
+    connect(m_elevateButton, &QPushButton::clicked, this, &MainWindow::onElevateClicked);
+    statusBar()->addWidget(m_elevateButton);
+
     // Bottom left: duration of the last file open (REQ-UI-15). Normal status
     // widgets sit on the left and give way to temporary messages.
     m_loadTimeLabel = new QLabel(statusBar());
@@ -433,6 +455,7 @@ void MainWindow::createStatusBar()
     statusBar()->addWidget(m_loadTimeLabel);
 
     m_docLabel = new QLabel(statusBar());
+    m_docLabel->setObjectName(QStringLiteral("docLabel"));
     m_statsLabel = new QLabel(statusBar());
     m_monitorLabel = new QLabel(statusBar());
     // All labels are permanent (right aligned): the temporary message area on
@@ -441,6 +464,11 @@ void MainWindow::createStatusBar()
     statusBar()->addPermanentWidget(m_statsLabel);
     statusBar()->addPermanentWidget(m_monitorLabel);
     statusBar()->showMessage(QString());
+}
+
+QLabel *MainWindow::warningLabel() const
+{
+    return m_warningLabel;
 }
 
 void MainWindow::connectSignals()
@@ -556,14 +584,9 @@ void MainWindow::retranslateUi()
     m_aboutAction->setText(tr("About"));
     m_logGroup->setTitle(tr("Log"));
     m_emptyTitle->setText(tr("No log file open"));
-    if (m_lastError.isEmpty()) {
-        m_emptyHint->setText(tr("Open a log file with File ▸ Open, drop one onto this window, or start "
-                                "the application with a file name.\nRun \"log-viewer --demo\" to preview "
-                                "the interface with sample data."));
-    } else {
-        m_emptyHint->setText(m_lastError);
-    }
+    updateEmptyHint();
     m_emptyOpenButton->setText(tr("Open Log File…"));
+    m_elevateButton->setText(tr("Open as Administrator…"));
 
     m_monitorLabel->setText(tr("Monitor: off"));
     updateMonitorLabel();
@@ -865,6 +888,12 @@ void MainWindow::onOpen()
 
 void MainWindow::onRefresh()
 {
+    // An elevated document lives in a snapshot: re-read the original file with
+    // fresh authorization instead of refreshing the snapshot (REQ-REL-04).
+    if (!m_elevatedOriginalPath.isEmpty()) {
+        openElevated(m_elevatedOriginalPath);
+        return;
+    }
     if (m_currentPath.isEmpty())
         return;
     openPaths({m_currentPath}, m_forcedFormatId);
@@ -878,6 +907,8 @@ void MainWindow::onCloseDocument()
     m_source.reset();
     m_provider.reset();
     m_currentPath.clear();
+    clearElevationOffer();
+    releaseSnapshot();
     m_tableView->clearExpansion();
     m_model->setProvider(nullptr);
     m_detailPane->clearEntry();
@@ -1247,6 +1278,9 @@ void MainWindow::setProvider(const EntryProviderPtr &provider, const QString &pa
     }
 
     m_lastError.clear();
+    if (m_warningLabel)
+        m_warningLabel->hide();
+    updateEmptyHint();
     m_tableView->clearExpansion();
 
     // Attaching a document touches the model, the column visibility, the widths
@@ -1378,6 +1412,8 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
     QString documentText = info.fileName.isEmpty() ? tr("Log document") : info.fileName;
     if (info.truncated)
         documentText += QLatin1Char(' ') + tr("(truncated)");
+    if (!m_snapshotPath.isEmpty())
+        documentText += QLatin1Char(' ') + tr("(elevated snapshot)");
     m_docLabel->setText(documentText);
 
     QStringList stats;
@@ -1400,8 +1436,9 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
     m_closeAction->setEnabled(true);
     m_exportAction->setEnabled(true);
 
-    // Live monitoring needs a real file behind the document (no demo data).
-    const bool canMonitor = static_cast<bool>(m_source);
+    // Live monitoring needs a real file behind the document (no demo data) and
+    // is disabled for elevated snapshots (REQ-REL-04).
+    const bool canMonitor = static_cast<bool>(m_source) && m_snapshotPath.isEmpty();
     m_monitorAction->setEnabled(canMonitor);
     if (!canMonitor && m_monitorAction->isChecked())
         m_monitorAction->setChecked(false);
@@ -1431,10 +1468,38 @@ void MainWindow::updateLoadTimeLabel()
                                  : QString());
 }
 
+void MainWindow::updateEmptyHint()
+{
+    const bool hasError = !m_lastError.isEmpty();
+
+    // The empty state doubles as the error surface when no document is loaded
+    // (REQ-REL-01): a dynamic property switches the label to the themed warning
+    // colour and back to the regular one.
+    if (m_emptyHint->property("warning").toBool() != hasError) {
+        m_emptyHint->setProperty("warning", hasError);
+        m_emptyHint->style()->unpolish(m_emptyHint);
+        m_emptyHint->style()->polish(m_emptyHint);
+    }
+
+    m_emptyHint->setText(hasError
+                             ? m_lastError
+                             : tr("Open a log file with File ▸ Open, drop one onto this window, "
+                                  "or start the application with a file name.\nRun "
+                                  "\"log-viewer --demo\" to preview the interface with sample data."));
+}
+
 void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormatId)
 {
+    const QString currentPath = paths.size() == 1 ? paths.first() : QString();
+    openPathsInternal(paths, forcedFormatId, paths, currentPath, false);
+}
+
+bool MainWindow::openPathsInternal(const QStringList &paths, const QString &forcedFormatId,
+                                   const QStringList &recentPaths, QString currentPath,
+                                   bool keepSnapshot)
+{
     if (paths.isEmpty())
-        return;
+        return false;
 
     m_forcedFormatId = forcedFormatId;
 
@@ -1483,7 +1548,9 @@ void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormat
     QApplication::restoreOverrideCursor();
     if (!ok) {
         reportError(error);
-        return;
+        if (!keepSnapshot)
+            updateElevationOffer(recentPaths);
+        return false;
     }
 
     bool wasTruncated = false;
@@ -1519,21 +1586,142 @@ void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormat
             tr("Some files have no parsable timestamps; they are shown one after another."), 7000);
     }
 
-    for (const QString &file : paths)
+    // A regular open replaces the elevated snapshot of the previous document
+    // (REQ-REL-04); the elevated flow keeps the snapshot it just registered.
+    if (!keepSnapshot)
+        releaseSnapshot();
+    clearElevationOffer();
+
+    for (const QString &file : recentPaths)
         m_settings->addRecentFile(file);
     updateRecentFilesMenu();
-    setProvider(provider, paths.size() == 1 ? paths.first() : QString());
+    setProvider(provider, currentPath);
     setLoadTime(loadTimer.elapsed() - dialogMs);
+    return true;
+}
+
+void MainWindow::openElevated(const QString &path)
+{
+    if (path.isEmpty())
+        return;
+
+    // The status bar offer (and with it m_elevationCandidate) is cleared while
+    // the document is attached; a local copy keeps the requested path valid for
+    // the whole operation.
+    const QString requestedPath = path;
+
+    // Keep the current snapshot until the new document is actually loaded: a
+    // cancelled authorization must not tear down the open document.
+    const QString previousSnapshot = m_snapshotPath;
+    const QString previousOriginal = m_elevatedOriginalPath;
+
+    // This blocks while the polkit dialog waits for the user and while the
+    // helper streams the file. Acceptable for system logs (see §16.10).
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    const QString snapshot = ElevatedFileReader::createSnapshot(requestedPath, &error);
+    QApplication::restoreOverrideCursor();
+
+    if (snapshot.isEmpty()) {
+        reportError(tr("Could not open \"%1\" with elevated privileges: %2")
+                        .arg(requestedPath, error));
+        updateElevationOffer({requestedPath});     // keep the offer for another attempt
+        return;
+    }
+
+    m_snapshotPath = snapshot;
+    m_elevatedOriginalPath = requestedPath;
+    if (!openPathsInternal({snapshot}, m_forcedFormatId, {requestedPath}, requestedPath, true)) {
+        // The failure is already reported; drop the fresh snapshot and restore
+        // the previous document state (if any).
+        ElevatedFileReader::removeSnapshot(snapshot);
+        m_snapshotPath = previousSnapshot;
+        m_elevatedOriginalPath = previousOriginal;
+        updateElevationOffer({requestedPath});
+        return;
+    }
+
+    if (!previousSnapshot.isEmpty() && previousSnapshot != snapshot)
+        ElevatedFileReader::removeSnapshot(previousSnapshot);
+    statusBar()->showMessage(
+        tr("Opened a read-only snapshot of \"%1\" with elevated privileges.").arg(requestedPath),
+        8000);
+}
+
+void MainWindow::updateElevationOffer(const QStringList &paths)
+{
+    clearElevationOffer();
+
+    // The first regular file the current user cannot read is the candidate.
+    for (const QString &path : paths) {
+        const QFileInfo info(path);
+        if (info.exists() && info.isFile() && !info.isReadable()) {
+            m_elevationCandidate = path;
+            break;
+        }
+    }
+    if (m_elevationCandidate.isEmpty())
+        return;
+
+    if (ElevatedFileReader::isSupported()) {
+        m_elevateButton->setToolTip(
+            tr("Read \"%1\" with administrator rights and open a read-only snapshot.")
+                .arg(m_elevationCandidate));
+        m_elevateButton->show();
+        return;
+    }
+
+    // Without an authentication helper the alert stays visible; explain how to
+    // grant read access manually (REQ-REL-04).
+    const QString guidance = ElevatedFileReader::unsupportedText();
+    if (m_warningLabel)
+        m_warningLabel->setFullText(m_lastError + QLatin1Char('\n') + guidance);
+    if (!m_provider)
+        m_emptyHint->setText(m_lastError + QStringLiteral("\n\n") + guidance);
+}
+
+void MainWindow::clearElevationOffer()
+{
+    m_elevationCandidate.clear();
+    if (m_elevateButton)
+        m_elevateButton->hide();
+}
+
+void MainWindow::releaseSnapshot()
+{
+    if (!m_snapshotPath.isEmpty()) {
+        ElevatedFileReader::removeSnapshot(m_snapshotPath);
+        m_snapshotPath.clear();
+    }
+    m_elevatedOriginalPath.clear();
+}
+
+void MainWindow::onElevateClicked()
+{
+    if (!m_elevationCandidate.isEmpty())
+        openElevated(m_elevationCandidate);
 }
 
 void MainWindow::reportError(const QString &message)
 {
     m_lastError = message;
     qWarning("log-viewer: %s", qUtf8Printable(message));
-    statusBar()->showMessage(message, 8000);
+
+    // A new failure invalidates the previous elevator candidate; openPaths()
+    // re-creates the offer afterwards when the failure was a permission issue.
+    clearElevationOffer();
+
+    // REQ-REL-01: the alert has to stay visible. The status bar message area is
+    // transient by design (showMessage() timeout, overwritten by the next status
+    // text), so failures go into the persistent warning indicator instead.
+    if (m_warningLabel) {
+        m_warningLabel->setFullText(message);
+        m_warningLabel->show();
+    }
+
     if (!m_provider)
         m_logStack->setCurrentIndex(0);
-    m_emptyHint->setText(message);
+    updateEmptyHint();
 }
 
 void MainWindow::updateRecentFilesMenu()
@@ -1606,6 +1794,9 @@ void MainWindow::writeLayout(QTextStream &out) const
     describe("logGroup", m_logGroup);
     describe("table", m_tableView);
     describe("detailPane", m_detailPane);
+    // Status bar diagnostics (REQ-REL-01/04): warning label and elevated offer.
+    describe("statusBar", statusBar());
+    describe("elevateButton", m_elevateButton);
     out << QStringLiteral("tableColumns=%1 headerWidth=%2\n")
                .arg(m_tableView->model() ? m_tableView->model()->columnCount() : 0)
                .arg(m_tableView->horizontalHeader()->width());

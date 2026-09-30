@@ -1,5 +1,6 @@
 #include "highlight/MessageTextHighlighter.h"
 
+#include "highlight/AnsiPalette.h"
 #include "highlight/SnippetTokenizer.h"
 
 #include <QTextBlock>
@@ -16,6 +17,20 @@ MessageTextHighlighter::MessageTextHighlighter(QTextDocument *document)
 void MessageTextHighlighter::setTheme(const HighlightTheme *theme)
 {
     m_theme = theme ? theme : &HighlightTheme::forDarkMode(false);
+    rehighlight();
+}
+
+void MessageTextHighlighter::setDarkTheme(bool dark)
+{
+    if (m_dark == dark)
+        return;
+    m_dark = dark;
+    rehighlight();
+}
+
+void MessageTextHighlighter::setAnsiSpans(const QVector<AnsiSpan> &spans)
+{
+    m_ansiSpans = spans;
     rehighlight();
 }
 
@@ -56,6 +71,30 @@ void MessageTextHighlighter::highlightBlock(const QString &text)
             continue;
         QTextCharFormat format;
         format.setForeground(m_theme->color(span.kind));
+        setFormat(start - blockStart, end - start, format);
+    }
+
+    // Terminal colours from the source log (REQ-PARSE-12) override the snippet
+    // colours; the Find highlight still wins below.
+    for (const AnsiSpan &span : m_ansiSpans) {
+        const int start = qMax(span.start, blockStart);
+        const int end = qMin(span.start + span.length, blockEnd);
+        if (end <= start)
+            continue;
+        QTextCharFormat format;
+        if (span.style.hasRgbForeground)
+            format.setForeground(span.style.rgbForeground);
+        else if (span.style.foreground >= 0)
+            format.setForeground(AnsiPalette::color(span.style.foreground, m_dark));
+        if (span.style.hasRgbBackground)
+            format.setBackground(span.style.rgbBackground);
+        else if (span.style.background >= 0)
+            format.setBackground(AnsiPalette::color(span.style.background, m_dark));
+        if (span.style.bold)
+            format.setFontWeight(QFont::Bold);
+        format.setFontItalic(span.style.italic);
+        format.setFontUnderline(span.style.underline);
+        format.setFontStrikeOut(span.style.strikeOut);
         setFormat(start - blockStart, end - start, format);
     }
 

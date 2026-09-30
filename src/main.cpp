@@ -2,6 +2,7 @@
 #include "app/SettingsStore.h"
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
+#include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
 #include "ui/MainWindow.h"
 
@@ -11,6 +12,7 @@
 #include <QTimer>
 
 #include <cstdio>
+#include <cstring>
 
 #if defined(Q_OS_WIN)
 #  include <windows.h>
@@ -63,6 +65,18 @@ void writeLine(const QString &text, bool toStdErr = false)
 int main(int argc, char *argv[])
 {
     attachConsoleIfPossible();
+
+    // Internal elevated-read helper (REQ-CLI-11): must run before any GUI
+    // initialisation - it is started through pkexec and has to work without a
+    // usable display - and must be the only argument. Raw bytes go to stdout so
+    // the parent can store the read-only snapshot; diagnostics go to stderr.
+    if (argc >= 2 && std::strcmp(argv[1], "--elevated-stream") == 0) {
+        if (argc != 3) {
+            std::fprintf(stderr, "usage: %s --elevated-stream <file>\n", argv[0]);
+            return 2;
+        }
+        return lv::ElevatedFileReader::runStreamHelper(QString::fromLocal8Bit(argv[2]));
+    }
 
     QApplication application(argc, argv);
     QApplication::setApplicationName(QStringLiteral("LogViewer"));

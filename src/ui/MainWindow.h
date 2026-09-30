@@ -27,6 +27,7 @@ class LogSource;
 class LogTableModel;
 class LogTableView;
 class LogWatcher;
+class StatusWarningLabel;
 class ThemeManager;
 class TranslationManager;
 
@@ -61,6 +62,13 @@ public:
     QAction *fullScreenAction() const { return m_fullScreenAction; }
     /// Status bar label with the duration of the last file open (REQ-UI-15).
     QLabel *loadTimeLabel() const { return m_loadTimeLabel; }
+    /// Status bar warning indicator: persistent failure alerts (REQ-REL-01).
+    QLabel *warningLabel() const;
+    /// Status bar "Open as Administrator…" offer for permission failures
+    /// (REQ-REL-04); null only before the status bar is created.
+    QPushButton *elevateButton() const { return m_elevateButton; }
+    /// Private snapshot backing the current elevated document (empty = regular).
+    QString elevatedSnapshotPath() const { return m_snapshotPath; }
     /// Settings ▸ File Association action (checkable, REQ-UI-16).
     QAction *associateAction() const { return m_associateAction; }
 
@@ -84,6 +92,8 @@ private slots:
     /// Row activated by the user (click or keyboard navigation).
     void onRowActivatedByUser(int row);
     void onCopyFeedback(const QString &message);
+    /// "Open as Administrator…" in the status bar (REQ-REL-04).
+    void onElevateClicked();
     /// Find / Filter engines (spec.md REQ-FIND / REQ-FILTER).
     void applyFindSettings();
     void applyFilterSettings();
@@ -116,6 +126,9 @@ private:
     void restoreWindowGeometry();
 
     void retranslateUi();
+    /// Updates the empty state hint: the failure message in the warning colour
+    /// while an error is active (REQ-REL-01), the normal hint otherwise.
+    void updateEmptyHint();
     void applyFonts();
     void applyTheme(bool dark);
     /// Reacts to window state changes (menu check mark, Esc shortcut and the
@@ -138,6 +151,22 @@ private:
     bool findPatternIsPending() const;
 
     void setProvider(const EntryProviderPtr &provider, const QString &path);
+    /// Shared open implementation behind openPaths() and openElevated(): the
+    /// latter passes \a keepSnapshot = true because the private snapshot was
+    /// registered just before. Returns whether a document was attached.
+    bool openPathsInternal(const QStringList &paths, const QString &forcedFormatId,
+                           const QStringList &recentPaths, QString currentPath,
+                           bool keepSnapshot);
+    /// Opens \a path through the system authentication helper as a read-only
+    /// snapshot (REQ-REL-04); failures keep the red warning and the offer.
+    void openElevated(const QString &path);
+    /// Shows the "Open as Administrator…" offer when one of \a paths is a
+    /// regular file the current user cannot read.
+    void updateElevationOffer(const QStringList &paths);
+    /// Hides the offer and drops the pending candidate.
+    void clearElevationOffer();
+    /// Deletes the snapshot of the current elevated document (if any).
+    void releaseSnapshot();
     /// Rebuilds the Columns menu from the current document (REQ-UI-12): one
     /// checkable item per column, plus "Show All Columns".
     void rebuildColumnsMenu();
@@ -181,6 +210,13 @@ private:
     QString m_documentSignature;             ///< column layout key (REQ-TABLE-05)
     QString m_forcedFormatId;
     QString m_lastError;
+    /// Candidate file for the elevated open offered by the status bar button.
+    QString m_elevationCandidate;
+    /// Private read-only snapshot backing the current elevated document.
+    QString m_snapshotPath;
+    /// Original (unreadable) path of the elevated document; Refresh re-reads it
+    /// with fresh authorization.
+    QString m_elevatedOriginalPath;
 
     // Widgets -------------------------------------------------------------
     QWidget *m_content = nullptr;
@@ -199,6 +235,11 @@ private:
     QLabel *m_docLabel = nullptr;
     QLabel *m_statsLabel = nullptr;
     QLabel *m_monitorLabel = nullptr;
+    /// Bottom-left status bar warning indicator (REQ-REL-01): persistent red
+    /// failure alert. Normal widget, so temporary messages cover it briefly.
+    StatusWarningLabel *m_warningLabel = nullptr;
+    /// "Open as Administrator…" next to the warning (REQ-REL-04).
+    QPushButton *m_elevateButton = nullptr;
     /// Bottom-left status bar label: duration of the last document open
     /// (REQ-UI-15). Normal indicator, so a temporary message hides it briefly.
     QLabel *m_loadTimeLabel = nullptr;

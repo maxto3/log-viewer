@@ -93,6 +93,10 @@ public:
     // Snippet tokens (VSCode colours) ---------------------------------------
     const QVector<TokenSpan> &tokenSpans(int row, int column) const;
 
+    /// ANSI SGR styles of the Message cell (REQ-PARSE-12); empty for other
+    /// columns and plain messages.
+    const QVector<AnsiSpan> &ansiSpans(int row, int column) const;
+
 signals:
     /// Emitted after the visibility of at least one column changed; the view
     /// mirrors it onto the header sections (REQ-TABLE-11).
