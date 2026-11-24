@@ -71,9 +71,15 @@ public:
     bool isRowExpanded(int row) const;
 
     /// Live monitoring helpers: follow the tail and count rows the user has not
-    /// seen yet (the "new lines" button).
+    /// seen yet (the "new lines" button). Event logs grow at the top
+    /// (REQ-EVT-11) and use FollowSide::Top.
+    enum class FollowSide { Bottom, Top };
+    void setFollowSide(FollowSide side);
+    FollowSide followSide() const { return m_followSide; }
     bool isAtBottom() const;
+    bool isAtTop() const;
     void scrollToBottomNow();
+    void scrollToTopNow();
     void setPendingNewRows(int count);
     int pendingNewRows() const { return m_pendingNewRows; }
 
@@ -146,6 +152,7 @@ private:
     LogHeaderView *m_header = nullptr;
     QToolButton *m_newRowsButton = nullptr;
     int m_pendingNewRows = 0;
+    FollowSide m_followSide = FollowSide::Bottom;
     QSet<qint64> m_expandedRows;
     /// Cache of "content height" per (row key, message column width).
     mutable QHash<QPair<qint64, int>, int> m_heightCache;

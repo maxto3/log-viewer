@@ -146,6 +146,11 @@ Remove the association with --unregister-association.</source>
         <translation>行号</translation>
     </message>
     <message>
+        <location filename="../core/LogTableModel.cpp"/>
+        <source>Record ID</source>
+        <translation>记录 ID</translation>
+    </message>
+    <message>
         <location filename="../core/LogTableModel.cpp" line="26"/>
         <source>Message</source>
         <translation>消息</translation>
@@ -443,6 +448,11 @@ Remove the association with --unregister-association.</source>
         <translation>行号</translation>
     </message>
     <message>
+        <location filename="../ui/DetailPane.cpp"/>
+        <source>Record ID</source>
+        <translation>记录 ID</translation>
+    </message>
+    <message>
         <location filename="../ui/DetailPane.cpp" line="184"/>
         <source>Lines</source>
         <translation>行数</translation>
@@ -603,6 +613,11 @@ Remove the association with --unregister-association.</source>
         <location filename="../ui/LogTableView.cpp" line="105"/>
         <source>New lines: %1 ▼</source>
         <translation>新行：%1 ▼</translation>
+    </message>
+    <message>
+        <location filename="../ui/LogTableView.cpp"/>
+        <source>New events: %1 ▲</source>
+        <translation>新事件：%1 ▲</translation>
     </message>
     <message>
         <location filename="../ui/LogTableView.cpp" line="516"/>
@@ -1062,6 +1077,266 @@ Load the complete file now?</source>
         <location filename="../ui/MainWindow.cpp"/>
         <source>The %1 association was removed and the previous one restored.</source>
         <translation>已移除 %1 关联并还原原有的关联。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Windows Event Log</source>
+        <translation>Windows 事件日志</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>All Channels…</source>
+        <translation>所有通道…</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Open .evtx File…</source>
+        <translation>打开 .evtx 文件…</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Open Windows Event Log…</source>
+        <translation>打开 Windows 事件日志…</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Open Windows Event Log File</source>
+        <translation>打开 Windows 事件日志文件</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Windows event logs (*.evtx);;All files (*)</source>
+        <translation>Windows 事件日志 (*.evtx);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Log files (*.log *.txt *.out);;Windows event logs (*.evtx);;All files (*)</source>
+        <translation>日志文件 (*.log *.txt *.out);;Windows 事件日志 (*.evtx);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Showing the newest %1 events; older events are not loaded.</source>
+        <translation>仅显示最近 %1 条事件；更早的事件未载入。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Windows event logs are only available on Windows.</source>
+        <translation>Windows 事件日志仅在 Windows 上可用。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Open one Windows event log file at a time.</source>
+        <translation>一次只能打开一个 Windows 事件日志文件。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Load More Events…</source>
+        <translation>加载更多事件…</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Load older events from the current Windows event log</source>
+        <translation>从当前 Windows 事件日志加载更早的事件</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Truncated Event Log</source>
+        <translation>事件日志已截断</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Only the newest %1 events are loaded.</source>
+        <translation>当前仅载入了最近 %1 条事件。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Load %1 More</source>
+        <translation>再加载 %1 条</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Load All Events…</source>
+        <translation>加载全部事件…</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Load All Events</source>
+        <translation>加载全部事件</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Loading every event can take a long time and use a lot of memory. Continue?</source>
+        <translation>加载全部事件可能耗时很长并占用大量内存。是否继续？</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>(elevated)</source>
+        <translation>（提权）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Monitoring %1 (every 2 s)</source>
+        <translation>正在监控 %1（每 2 秒）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>%1 new events (follow paused)</source>
+        <translation>%1 条新事件（暂停跟随）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>The event log was cleared or recreated; the document was reloaded.</source>
+        <translation>事件日志已清空或重建，文档已重新载入。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Live monitoring paused: %1 new events reached the limit.</source>
+        <translation>实时监控已暂停：新增事件达到 %1 条上限。</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Monitor: on (%1 new events)</source>
+        <translation>监控：开（%1 条新事件）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Follow the file or event log channel like &quot;tail -f&quot; (Ctrl+M)</source>
+        <translation>像 tail -f 一样跟随文件或事件日志通道（Ctrl+M）</translation>
+    </message>
+    <message>
+        <location filename="../ui/MainWindow.cpp"/>
+        <source>Read &quot;%1&quot; with administrator rights (UAC).</source>
+        <translation>以管理员权限读取“%1”（UAC）。</translation>
+    </message>
+</context>
+<context>
+    <name>lv::EventLogChannelDialog</name>
+    <message>
+        <location filename="../ui/EventLogChannelDialog.cpp"/>
+        <source>Select Windows Event Log Channel</source>
+        <translation>选择 Windows 事件日志通道</translation>
+    </message>
+    <message>
+        <location filename="../ui/EventLogChannelDialog.cpp"/>
+        <source>Filter channels</source>
+        <translation>过滤通道</translation>
+    </message>
+    <message>
+        <location filename="../ui/EventLogChannelDialog.cpp"/>
+        <source>No event log channels were found.</source>
+        <translation>未找到任何事件日志通道。</translation>
+    </message>
+</context>
+<context>
+    <name>EventLogBackend</name>
+    <message>
+        <source>Access denied while reading &quot;%1&quot;. This event log requires administrator privileges; use &quot;Open as Administrator…&quot; or restart the application as administrator.</source>
+        <translation>读取“%1”时权限不足。该事件日志需要管理员权限，请使用“以管理员权限打开…”或以管理员身份重新启动本程序。</translation>
+    </message>
+    <message>
+        <source>&quot;%1&quot; was not found.</source>
+        <translation>未找到“%1”。</translation>
+    </message>
+    <message>
+        <source>The event log file &quot;%1&quot; is in use by the Windows Event Log service. Open the channel instead, or copy the file while the service is stopped.</source>
+        <translation>事件日志文件“%1”正被 Windows 事件日志服务占用。请改为打开对应通道，或在停止该服务后复制文件。</translation>
+    </message>
+    <message>
+        <source>The event log channel &quot;%1&quot; was not found.</source>
+        <translation>未找到事件日志通道“%1”。</translation>
+    </message>
+    <message>
+        <source>Could not read &quot;%1&quot; (Windows error %2: %3).</source>
+        <translation>无法读取“%1”（Windows 错误 %2：%3）。</translation>
+    </message>
+    <message>
+        <source>Windows event logs are only available on Windows.</source>
+        <translation>Windows 事件日志仅在 Windows 上可用。</translation>
+    </message>
+</context>
+<context>
+    <name>EventLog</name>
+    <message>
+        <source>Windows Event Log</source>
+        <translation>Windows 事件日志</translation>
+    </message>
+</context>
+<context>
+    <name>lv::EventLogWatcher</name>
+    <message>
+        <source>The event log has no EventRecordID; live monitoring is unavailable.</source>
+        <translation>该事件日志没有 EventRecordID，无法进行实时监控。</translation>
+    </message>
+</context>
+<context>
+    <name>ElevatedEventLog</name>
+    <message>
+        <source>The elevated helper returned an invalid response (%1).</source>
+        <translation>提权助手返回了无效响应（%1）。</translation>
+    </message>
+    <message>
+        <source>Could not create the pipe reader event.</source>
+        <translation>无法创建管道读取事件。</translation>
+    </message>
+    <message>
+        <source>Could not read from the elevated helper (Windows error %1: %2).</source>
+        <translation>无法从提权助手读取数据（Windows 错误 %1：%2）。</translation>
+    </message>
+    <message>
+        <source>The elevated helper did not respond in time.</source>
+        <translation>提权助手响应超时。</translation>
+    </message>
+    <message>
+        <source>The elevated helper exited before sending a response.</source>
+        <translation>提权助手在返回响应前已退出。</translation>
+    </message>
+    <message>
+        <source>The elevated helper exited before sending a complete record.</source>
+        <translation>提权助手在发送完整记录前已退出。</translation>
+    </message>
+    <message>
+        <source>The elevated helper could not read the event log.</source>
+        <translation>提权助手无法读取事件日志。</translation>
+    </message>
+    <message>
+        <source>Elevated event log reads are only available on Windows.</source>
+        <translation>事件日志提权读取仅在 Windows 上可用。</translation>
+    </message>
+    <message>
+        <source>Exactly one event log channel or file is required.</source>
+        <translation>必须且只能指定一个事件日志通道或文件。</translation>
+    </message>
+    <message>
+        <source>The application path is unavailable.</source>
+        <translation>无法获取程序路径。</translation>
+    </message>
+    <message>
+        <source>Could not create the helper pipe ACL (Windows error %1: %2).</source>
+        <translation>无法创建提权助手管道 ACL（Windows 错误 %1：%2）。</translation>
+    </message>
+    <message>
+        <source>Could not create the helper pipe (Windows error %1: %2).</source>
+        <translation>无法创建提权助手管道（Windows 错误 %1：%2）。</translation>
+    </message>
+    <message>
+        <source>Authorization was cancelled.</source>
+        <translation>已取消授权。</translation>
+    </message>
+    <message>
+        <source>Could not start the elevated helper (Windows error %1: %2).</source>
+        <translation>无法启动提权助手（Windows 错误 %1：%2）。</translation>
+    </message>
+    <message>
+        <source>The elevated helper did not connect in time.</source>
+        <translation>提权助手连接超时。</translation>
+    </message>
+    <message>
+        <source>Could not connect to the elevated helper (Windows error %1: %2).</source>
+        <translation>无法连接到提权助手（Windows 错误 %1：%2）。</translation>
+    </message>
+    <message>
+        <source>Could not start the helper (Windows error %1: %2).</source>
+        <translation>无法启动助手（Windows 错误 %1：%2）。</translation>
     </message>
 </context>
 </TS>

@@ -2,6 +2,8 @@
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
 #include "core/LogTableModel.h"
+#include "core/IEventLogBackend.h"
+#include "core/EventLogProvider.h"
 #include "highlight/SnippetTokenizer.h"
 #include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
@@ -115,6 +117,9 @@ private slots:
     void controlSequencesAndCarriageReturnsAreCleaned();
     void elevationOpensSnapshotAndCleansUp();
     void associationMenuEntryExists();
+    void eventLogMenuOnlyOnSupportedPlatforms();
+    void opensNativeEventLogChannel();
+    void securityChannelOffersElevation();
     void headersFollowLanguageSwitch();
     void resetAllKeepsDefaults();
 
@@ -1735,6 +1740,123 @@ void TestMainWindowBehavior::associationMenuEntryExists()
     }
     QVERIFY(inMenuBar);
     QVERIFY(!action->toolTip().isEmpty());
+}
+
+void TestMainWindowBehavior::eventLogMenuOnlyOnSupportedPlatforms()
+{
+    // REQ-EVT-01: Windows shows File ▸ Windows Event Log with the classic
+    // channels; other platforms must not expose the entry at all.
+    auto settings = makeSettings(QStringLiteral("eventlog"), true);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    const EventLogBackendPtr backend = createEventLogBackend();
+    QCOMPARE(window.eventLogMenu() != nullptr, backend->isSupported());
+
+    if (!window.eventLogMenu())
+        return;
+
+    QVERIFY(!window.eventLogMenu()->title().isEmpty());
+    QStringList entries;
+    for (QAction *action : window.eventLogMenu()->actions())
+        entries << action->text();
+    QVERIFY(entries.contains(QStringLiteral("Application")));
+    QVERIFY(entries.contains(QStringLiteral("System")));
+    QVERIFY(entries.contains(QStringLiteral("Setup")));
+    QVERIFY(entries.contains(QStringLiteral("Security")));
+
+    // The submenu is reachable from the File menu, not an orphan.
+    bool inMenuBar = false;
+    for (QMenu *menu : window.menuBar()->findChildren<QMenu *>()) {
+        if (menu->actions().contains(window.eventLogMenu()->menuAction()))
+            inMenuBar = true;
+    }
+    QVERIFY(inMenuBar);
+}
+
+void TestMainWindowBehavior::opensNativeEventLogChannel()
+{
+    // REQ-EVT: the menu path must attach a readable document, not only exist.
+    const EventLogBackendPtr backend = createEventLogBackend();
+    if (!backend->isSupported())
+        QSKIP("Native Windows event logs are not supported on this platform.");
+
+    QString error;
+    const auto probe = EventLogProvider::openChannel(backend, QStringLiteral("Application"), 10,
+                                                     &error);
+    if (!probe)
+        QSKIP(qPrintable(error));
+
+    auto settings = makeSettings(QStringLiteral("eventlogopen"), true);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    QVERIFY(window.loadMoreEventsAction() != nullptr);
+    QVERIFY(!window.loadMoreEventsAction()->isEnabled());
+
+    QVERIFY(QMetaObject::invokeMethod(&window, "openEventLogChannel", Qt::DirectConnection,
+                                      Q_ARG(QString, QStringLiteral("Application"))));
+
+    LogTableModel *model = window.logModel();
+    QVERIFY(model != nullptr);
+    QVERIFY(model->rowCount() > 0);
+    QVERIFY(model->columnCount() >= 4);
+    QCOMPARE(model->headerData(0, Qt::Horizontal, Qt::DisplayRole).toString(),
+             QStringLiteral("Record ID"));
+    const LogEntry *first = model->entry(0);
+    QVERIFY(first != nullptr);
+    QVERIFY(first->firstLine > 0);   // EventRecordID anchor
+
+    // Event logs are read-only, but live channel monitoring is available
+    // (REQ-EVT-11); Refresh stays disabled because there is no file path.
+    QVERIFY(window.monitorAction()->isEnabled());
+    window.monitorAction()->setChecked(true);
+    QVERIFY(window.monitorAction()->isChecked());
+    QVERIFY(window.isEventLogMonitoring());
+    QCOMPARE(window.logTableView()->followSide(), LogTableView::FollowSide::Top);
+    window.monitorAction()->setChecked(false);
+    QVERIFY(!window.isEventLogMonitoring());
+    QVERIFY(!window.loadTimeLabel()->text().isEmpty());
+
+    // REQ-EVT-09: "Load More Events…" follows the truncation flag of the
+    // document; the status bar button mirrors the menu action.
+    const EntryProviderPtr opened = model->provider();
+    QVERIFY(opened != nullptr);
+    const bool truncated = opened->documentInfo().truncated;
+    QCOMPARE(window.loadMoreEventsAction()->isEnabled(), truncated);
+    QCOMPARE(window.loadMoreEventsButton()->isVisible(), truncated);
+}
+
+void TestMainWindowBehavior::securityChannelOffersElevation()
+{
+    // REQ-EVT-10: an access-denied channel must offer the UAC helper. Elevated
+    // test runners can read Security, so skip that case.
+    const EventLogBackendPtr backend = createEventLogBackend();
+    if (!backend->isSupported())
+        QSKIP("Native Windows event logs are not supported on this platform.");
+
+    const EventLogReadResult probe = backend->readChannel(QStringLiteral("Security"), 1);
+    if (probe.error.isEmpty())
+        QSKIP("Security is readable without elevation; the denial path is not observable.");
+
+    auto settings = makeSettings(QStringLiteral("securityoffer"), true);
+    ThemeManager theme(settings.get());
+    TranslationManager translations;
+    MainWindow window(settings.get(), &theme, &translations);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    QVERIFY(QMetaObject::invokeMethod(&window, "openEventLogChannel", Qt::DirectConnection,
+                                      Q_ARG(QString, QStringLiteral("Security"))));
+    QVERIFY(window.elevateButton() != nullptr);
+    QVERIFY(window.elevateButton()->isVisible());
+    QVERIFY(!window.elevateButton()->text().isEmpty());
 }
 
 QTEST_MAIN(TestMainWindowBehavior)

@@ -2,6 +2,7 @@
 #include "app/SettingsStore.h"
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
+#include "platform/ElevatedEventLog.h"
 #include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
 #include "ui/MainWindow.h"
@@ -77,6 +78,11 @@ int main(int argc, char *argv[])
         }
         return lv::ElevatedFileReader::runStreamHelper(QString::fromLocal8Bit(argv[2]));
     }
+
+    // Windows event log helper (REQ-CLI-12): same rules, started through
+    // ShellExecuteEx(runas) by the non-elevated parent.
+    if (argc >= 2 && std::strcmp(argv[1], "--event-log-stream") == 0)
+        return lv::ElevatedEventLog::runStreamHelper();
 
     QApplication application(argc, argv);
     QApplication::setApplicationName(QStringLiteral("LogViewer"));

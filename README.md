@@ -17,10 +17,11 @@ Studio Code colour scheme, and can follow a file live like `tail -f`.
 | Filter | Hides rows by level, time range (absolute instants) or keyword; the keyword filter offers an **Invert** option that keeps only the rows *without* a match; the level check box list is built from the levels that occur in the loaded file, so it follows each log; conditions combine with AND; status bar shows `shown / total lines` |
 | Syntax highlighting | JSON, XML and YAML fragments inside messages get the VSCode Dark+ / Light+ palette; details pane follows the theme |
 | Details pane | Optional pane (right or bottom) with bold field names and the complete, never truncated message. While it is hidden the table switches to complete rows: every entry is shown in full, nothing is truncated; double click any cell to copy its full text |
-| Live monitoring | `Ctrl+M` follows a single file like `tail -f`: appended lines appear automatically, the view follows the tail, rotation/truncation reloads the document |
+| Live monitoring | `Ctrl+M` follows a single file like `tail -f` (or a Windows event log channel, polled every 2 s): appended lines/new events appear automatically, the view follows the tail, rotation/truncation or a cleared channel reloads the document |
 | Multiple files | Open or drop several files: same-format files are merged by timestamp with an additional File column; different formats are rejected with an explanation |
 | Encodings | UTF-8 (with or without BOM), UTF-16, and legacy encodings auto-detected (GB18030/GBK, Big5, Shift_JIS, CP1252) and shown as UTF-8 |
 | Console logs | ANSI escape sequences are stripped (cursor/title noise) and terminal colours — 8/16-colour, 256-colour and truecolour, plus bold/italic/underline — are rendered in the table and the details pane; LF, CRLF and CR-only line endings are indexed correctly (for example systemd `boot.log`) |
+| Windows event logs | On Windows, **File ▸ Windows Event Log** opens a live channel (Application, System, Setup, Security, or any channel from **All Channels…**) or an archived/copied `.evtx` file through the native Windows API — no export step required. The view is read-only, shows the newest 20,000 events first (local time, Record ID; marked truncated when older events exist), and disables refresh. A truncated log offers **Load More Events…** (20,000 more, or all events after a warning). Live channels support **Monitor** (2 s polling, newest events on top); the Security log can be opened through **Open as Administrator…** (UAC helper) |
 | Languages | Complete English and Simplified Chinese user interface, switchable at runtime |
 | Themes | Light, Dark or follow the system; separate syntax highlighting theme setting |
 | View | Collapse the search & filter panel to its title row to give the table more room; full screen (`F11`, leave with `Esc`) automatically collapses that panel |
@@ -133,6 +134,8 @@ log-viewer [options] [files...]
 ```
 
 Exit codes: `0` success, `1` file error (also a failed registration), `2` usage error.
+On Windows a positional `.evtx` path is opened through the native event log API
+instead of the text parser.
 
 ## Keyboard and mouse
 
@@ -157,8 +160,10 @@ Exit codes: `0` success, `1` file error (also a failed registration), `2` usage 
 
 ## Menus
 
-* **File** — Open, Refresh, Close, Monitor (checkbox), Export Filtered Results,
-  Recent Files, Exit
+* **File** — Open, Windows Event Log (Windows only: live channels,
+  *All Channels…*, *Open .evtx File…*), Load More Events… (truncated event logs
+  only), Refresh, Close, Monitor (checkbox; files and live event log channels),
+  Export Filtered Results, Recent Files, Exit
 * **Settings**
   * **Font** — interface font, table font, header font, reset to defaults
   * **Language** — English / 简体中文 (applies immediately)
@@ -208,9 +213,9 @@ the defaults.
 src/app/        settings, theme, translations, command line
 src/core/       line index, entry providers, parsers, model, matcher, watcher
 src/highlight/  VSCode palettes, JSON/XML/YAML tokenizer, message highlighter
-src/platform/   platform specific code (encodings, fonts, paths)
+src/platform/   platform specific code (encodings, fonts, paths, event logs)
 src/ui/         main window, filter panel, table view, details pane, dialogs
-tests/          Qt Test suites (14 targets) and the frozen log fixture (tests/data/)
+tests/          Qt Test suites (18 targets) and the frozen log fixture (tests/data/)
 test-data/      local sample logs for manual testing (git-ignored, not versioned)
 scripts/        build, test, run, package and file-association scripts
 packaging/      Linux desktop entry, AppStream metadata, icon, CPack DEB

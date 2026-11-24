@@ -99,11 +99,16 @@ LogTableView::LogTableView(QWidget *parent)
     m_newRowsButton->setFocusPolicy(Qt::NoFocus);
     m_newRowsButton->hide();
     connect(m_newRowsButton, &QToolButton::clicked, this, [this] {
-        scrollToBottomNow();
+        if (m_followSide == FollowSide::Top)
+            scrollToTopNow();
+        else
+            scrollToBottomNow();
         setPendingNewRows(0);
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int) {
-        if (m_pendingNewRows > 0 && isAtBottom())
+        if (m_pendingNewRows == 0)
+            return;
+        if (m_followSide == FollowSide::Top ? isAtTop() : isAtBottom())
             setPendingNewRows(0);
     });
 }
@@ -114,9 +119,28 @@ bool LogTableView::isAtBottom() const
     return bar->value() >= bar->maximum() - 1;
 }
 
+bool LogTableView::isAtTop() const
+{
+    const QScrollBar *bar = verticalScrollBar();
+    return bar->value() <= bar->minimum() + 1;
+}
+
 void LogTableView::scrollToBottomNow()
 {
     scrollToBottom();
+}
+
+void LogTableView::scrollToTopNow()
+{
+    verticalScrollBar()->setValue(verticalScrollBar()->minimum());
+}
+
+void LogTableView::setFollowSide(FollowSide side)
+{
+    if (m_followSide == side)
+        return;
+    m_followSide = side;
+    setPendingNewRows(0);
 }
 
 void LogTableView::setPendingNewRows(int count)
@@ -126,7 +150,10 @@ void LogTableView::setPendingNewRows(int count)
         m_newRowsButton->hide();
         return;
     }
-    m_newRowsButton->setText(tr("New lines: %1 ▼").arg(m_pendingNewRows));
+    if (m_followSide == FollowSide::Top)
+        m_newRowsButton->setText(tr("New events: %1 ▲").arg(m_pendingNewRows));
+    else
+        m_newRowsButton->setText(tr("New lines: %1 ▼").arg(m_pendingNewRows));
     m_newRowsButton->adjustSize();
     positionNewRowsButton();
     m_newRowsButton->show();
@@ -139,7 +166,9 @@ void LogTableView::positionNewRowsButton()
         return;
     const QSize hint = m_newRowsButton->sizeHint();
     const int x = viewport()->width() - hint.width() - 28;
-    const int y = viewport()->height() - hint.height() - 28;
+    const int y = m_followSide == FollowSide::Top
+        ? horizontalHeader()->height() + 8
+        : viewport()->height() - hint.height() - 28;
     m_newRowsButton->move(qMax(8, x), qMax(8, y));
 }
 
@@ -932,7 +961,9 @@ void LogTableView::autoFitColumns()
         // wrapped or clipped, so those columns are placed before the rest and are
         // not scaled down (REQ-TABLE-05).
         const ColumnKind kind = model->columnKind(column);
-        if (kind == ColumnKind::Time || kind == ColumnKind::Level) {
+        const bool eventLogRecordId = kind == ColumnKind::Line && model->provider()
+            && model->provider()->documentInfo().formatId == QLatin1String("wevt_native");
+        if (kind == ColumnKind::Time || kind == ColumnKind::Level || eventLogRecordId) {
             reservedColumn[column] = true;
             continue;
         }

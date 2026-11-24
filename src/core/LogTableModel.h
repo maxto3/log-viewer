@@ -69,6 +69,10 @@ public:
     /// Notifies the views that rows were appended to the provider (live
     /// monitoring); existing rows keep their identity.
     void appendRows(int firstRow);
+    /// Notifies the views that \a count rows were inserted at the top by an
+    /// event log monitor (REQ-EVT-11); existing rows shift down. Returns the
+    /// number of rows that became visible (filtering may hide some).
+    int prependRows(int count);
 
     // Filtering -------------------------------------------------------------
     void setFilterSpec(const FilterSpec &spec);

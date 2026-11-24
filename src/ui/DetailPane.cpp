@@ -105,7 +105,7 @@ void DetailPane::retranslateUi()
         rebuildFields();
 }
 
-void DetailPane::setEntry(const LogEntry *entry, const QString &fileName)
+void DetailPane::setEntry(const LogEntry *entry, const QString &fileName, bool eventLogRecord)
 {
     m_hasEntry = entry != nullptr;
     if (!entry) {
@@ -114,6 +114,7 @@ void DetailPane::setEntry(const LogEntry *entry, const QString &fileName)
     }
     m_entry = *entry;
     m_fileName = fileName;
+    m_eventLogRecord = eventLogRecord;
     m_message->setPlainText(m_entry.message);
     if (m_highlighter) {
         m_highlighter->setAnsiSpans(m_entry.ansiSpans);
@@ -128,6 +129,7 @@ void DetailPane::clearEntry()
     m_hasEntry = false;
     m_entry = LogEntry();
     m_fileName.clear();
+    m_eventLogRecord = false;
     m_message->clear();
     while (m_form->rowCount() > 0)
         m_form->removeRow(0);
@@ -184,8 +186,9 @@ void DetailPane::rebuildFields()
 
     if (!m_fileName.isEmpty())
         m_form->addRow(fieldLabel(tr("File")), valueLabel(m_fileName));
-    m_form->addRow(fieldLabel(tr("Line")), valueLabel(QString::number(m_entry.firstLine)));
-    if (m_entry.physicalLines > 1)
+    m_form->addRow(fieldLabel(m_eventLogRecord ? tr("Record ID") : tr("Line")),
+                   valueLabel(QString::number(m_entry.firstLine)));
+    if (!m_eventLogRecord && m_entry.physicalLines > 1)
         m_form->addRow(fieldLabel(tr("Lines")), valueLabel(QString::number(m_entry.physicalLines)));
 
     QStringList extraKeys = m_entry.extra.keys();
@@ -220,7 +223,8 @@ void DetailPane::copyAllFieldsToClipboard()
         lines << QStringLiteral("Host: %1").arg(m_entry.host);
     if (!m_fileName.isEmpty())
         lines << QStringLiteral("File: %1").arg(m_fileName);
-    lines << QStringLiteral("Line: %1").arg(m_entry.firstLine);
+    lines << (m_eventLogRecord ? QStringLiteral("Record ID: %1").arg(m_entry.firstLine)
+                               : QStringLiteral("Line: %1").arg(m_entry.firstLine));
     QStringList extraKeys = m_entry.extra.keys();
     extraKeys.sort(Qt::CaseInsensitive);
     for (const QString &key : extraKeys)

@@ -42,6 +42,7 @@
 | FMT-4 | 结构化行：JSON Lines、logfmt(`k=v`)、带表头 CSV/TSV | 键名自动映射到标准字段 |
 | FMT-5 | Windows 事件日志导出与 IIS W3C 日志 | 事件查看器「文本(制表符分隔)」导出（`wevt_tsv`）、「XML」导出（`wevt_xml`，一个物理行可含多个事件，按事件建立条目）、`Format-List` 文本块（`wevt_text`）、CSV/TSV 导出（`csv_tsv`）；IIS W3C（`iis_w3c`） |
 | FMT-6 | 通用启发式兜底 | 任意"时间 + 级别 + 消息"文本日志；无级别时退化为消息单列 |
+| FMT-7 | Windows 事件日志（原生通道与 `.evtx` 文件，仅 Windows） | 通过 `wevtapi` 读取实时通道（Application / System / Setup / Security / 全部通道）与归档/复制出来的 `.evtx` 文件；不要求用户先导出为文本或 XML |
 
 > 未列入 v1 专门解析器：Apache / Nginx 访问与错误日志（由 FMT-6 兜底：可提取时间戳，其余归入消息列）。如需专门解析器，属于后续增量需求。
 
@@ -108,7 +109,7 @@
 | --- | --- | --- |
 | REQ-PARSE-01 | 自动探测日志格式（第 1.2 节 FMT-1…FMT-6），无需用户手工选择；探测结果在状态栏显示 | 必须 |
 | REQ-PARSE-02 | 表格列**自动依据日志内容判定**；默认标准列包含 **Time、Level、Message**，并按解析结果补充 Thread、Target、PID、Host 等列 | 必须 |
-| REQ-PARSE-03 | 表格中**第一列（最左侧）固定为 Line 列**：默认为**源文件物理行号**（便于与原文对照）；对**记录式导出**（Windows 事件日志 XML / TSV）显示**源内条目序号**（1 起）——这类导出的物理行无法标识记录（XML 导出整个文档常在一行内、所有事件同为一个物理行；TSV 首行是表头，数据从第 2 行开始）；多文件合并时紧随其后增加 **File** 列 | 必须 |
+| REQ-PARSE-03 | 表格中**第一列（最左侧）固定为 Line 列**：默认为**源文件物理行号**（便于与原文对照）；对**记录式导出**（Windows 事件日志 XML / TSV）显示**源内条目序号**（1 起）——这类导出的物理行无法标识记录（XML 导出整个文档常在一行内、所有事件同为一个物理行；TSV 首行是表头，数据从第 2 行开始）；多文件合并时紧随其后增加 **File** 列；**Windows 原生事件日志**的第一列显示 **EventRecordID**（表头 `Record ID`，见 REQ-EVT-06） | 必须 |
 | REQ-PARSE-04 | 编码自动检测：BOM（UTF-8/UTF-16/UTF-32）→ 严格 UTF-8 校验 → UTF-16 → 本地 8 位编码回退；**所有非 UTF-8 内容自动转换为 UTF-8 后显示**，不当场改写磁盘文件。回退编码在 Windows 使用系统 ANSI 代码页（简体中文 = CP936/GB18030），在 Linux 使用 `iconv`（GB18030 → UTF-8） | 必须 |
 | REQ-PARSE-05 | 无法解码的字节以 U+FFFD 占位，并在状态栏给出提示 | 应该 |
 | REQ-PARSE-06 | 续行合并：不以格式锚点开头的物理行自动合并到上一条日志的 Message（默认开启，Settings 中可关闭） | 必须 |
@@ -118,6 +119,22 @@
 | REQ-PARSE-10 | 解析失败的行不丢弃：整行作为 Message 显示，级别记为 OTHER | 必须 |
 | REQ-PARSE-11 | 换行符 **LF / CRLF / CR（单独 `\r`）/ 混合** 均可正确索引与显示（Windows、Linux、控制台引导日志生成的混合场景）；`\r\n` 视为一个终止符，`\r\r\n` 视为「空行 + 终止符」 | 必须 |
 | REQ-PARSE-12 | 控制字符与 ANSI 转义序列：显示前剥离 ANSI CSI / OSC / 其它 ESC 序列以及 C0/C1 控制字符（保留 TAB 与 LF），不得把 ESC、`\r` 等渲染为方块或 `[0;32m` 残文；**SGR 样式按终端语义渲染**——前景/背景色（含 8/16 色与 `38;5;n`、`38;2;r;g;b` 扩展色）、加粗、斜体、下划线映射到表格与详情面板的等价样式（颜色随浅/深主题选择可读调色板，对比度 ≥ 4.5:1）；光标/窗口/标题等控制序列一律剥离；清理后的文本为查找、过滤、复制与导出的唯一口径（不保留颜色信息，原始文件只读不改） | 必须 |
+
+### REQ-EVT Windows 事件日志（原生通道与 `.evtx` 文件，仅 Windows）
+
+| 编号 | 需求 | 优先级 |
+| --- | --- | --- |
+| REQ-EVT-01 | 程序启动时检测平台：Windows 下 File 菜单自动出现 **Windows Event Log** 子菜单，空状态页同时给出入口；非 Windows 平台不显示任何事件日志入口 | 必须 |
+| REQ-EVT-02 | 子菜单固定列出 Application / System / Setup / Security，并提供 **All Channels…** 对话框——可过滤搜索的完整通道列表（通道名不翻译） | 必须 |
+| REQ-EVT-03 | 支持打开归档或复制出来的 `.evtx` 文件：File ▸ Open 文件过滤器、**Open .evtx File…** 菜单项、拖放以及命令行位置参数均可 | 必须 |
+| REQ-EVT-04 | 读取必须使用 Windows 事件日志原生 API（`wevtapi`）：实时通道使用 ChannelPath 查询，`.evtx` 文件使用 FilePath 查询；不得调用 `wevtutil.exe`、PowerShell 等外部进程 | 必须 |
+| REQ-EVT-05 | 只读：不写入、不清空、不修改事件日志；Refresh 仍禁用；**Monitor 仅对实时通道开放**（`.evtx` 静态文件、demo、提权文档除外）；事件日志视图不写入「最近文件」 | 必须 |
+| REQ-EVT-06 | 默认仅载入**最近 20,000 条**事件，按**新→旧**显示（最新记录在第一行）；事件时间从 `SystemTime`（UTC）转换为**本地时间**显示，但保留绝对时刻用于过滤比较；超出时文档标记 `(truncated)` 并给出提示；事件映射到现有表格列：Time、Level、Target（Provider）、Host、Event ID、Data、Message；第一列显示 **EventRecordID**（表头 `Record ID`，稳定唯一，便于增量监控） | 必须 |
+| REQ-EVT-07 | Message 优先使用 `EvtFormatMessage` 的本地化文本；publisher 元数据缺失或格式化失败时回退到 EventData 拼接；任何单条事件失败都不得丢行、不得中断整篇文档或崩溃 | 必须 |
+| REQ-EVT-08 | 权限不足（如 Security 通道）、通道不存在、文件被服务占用等失败必须给出明确错误提示（Security 提示以管理员身份运行），且不影响已加载内容 | 必须 |
+| REQ-EVT-09 | 截断的事件日志支持**分档继续加载**：当文档被标记 truncated 时，File 菜单与状态栏提供 **Load More Events…**；可选择再加载 20,000 条，或经耗时/内存提示后加载全部；继续加载失败时保留当前文档；成功后在原通道/文件上按新上限重新查询并整体替换文档（视图重建，滚动位置与选中行重置）；监控进行中加载更多时停止监控、重建后自动恢复监控 | 必须 |
+| REQ-EVT-10 | **Windows UAC 提权读取**：无权限的事件日志（典型为 Security）错误提示旁提供 **Open as Administrator…**；经 UAC 授权后由本程序的高权限辅助进程（同一 exe 的 `--event-log-stream` 模式）只读目标，并通过私有命名管道把记录流回非提权主进程；辅助进程不写用户路径、不经过 shell；取消/失败保留当前文档；提权文档标记 `(elevated)`；“加载更多”重新授权（首次提示可一次加载全部） | 必须 |
+| REQ-EVT-11 | **事件日志实时监控**（仅实时通道，`.evtx` 禁用）：按 `EventRecordID` 每 2 秒增量查询，新事件插入**第一行**；停留在顶部时自动跟随，滚离顶部时显示 `New events: N ▲`；新事件参与过滤/查找/级别计数；不重复、不丢行；检测通道清空/重置并重建；新增事件累计达到 **50,000 条**后自动暂停并提示；提权通道不监控 | 必须 |
 
 ### REQ-FIND 查找（高亮，不隐藏）
 
@@ -245,6 +262,7 @@
 | REQ-CLI-09 | `--demo`：载入内置演示数据（覆盖各日志级别、超长消息、内嵌 JSON/XML/YAML 片段），用于界面自检与截图，不参与正式功能 | 可选 |
 | REQ-CLI-10 | `--register-association` / `--unregister-association`：把 **`.log`** 关联注册/撤销到**本可执行文件自身**（见 REQ-ASSOC-06/07），成功退出码 0、失败 1（原因写标准错误，不弹 GUI 对话框）；`--force` 覆盖已有的他人关联且不再提示，默认覆盖前会把原值备份下来供撤销还原；非 Windows 上提示改用 `xdg-mime` 并返回 1 | 应该 |
 | REQ-CLI-11 | **内部辅助模式** `--elevated-stream <绝对路径>`（不列入 `--help`）：仅供 REQ-REL-04 的提权流程经 `pkexec` 调用，必须在**任何 GUI 初始化之前**执行（无显示环境也能工作）；把单个常规文件的原始字节写到标准输出（只读、不写磁盘、不修改文件、不经过 shell）；非 3 个参数返回 2，文件缺失 / 目录 / 非普通文件 / 读失败返回 1（原因写标准错误） | 应该 |
+| REQ-CLI-12 | **Windows 内部提权助手模式** `--event-log-stream <pipe> <channel\|file> <target> <maxRecords>`（不列入 `--help`）：仅供 REQ-EVT-10 经 `ShellExecuteExW(runas)` 调用，在任何 GUI 初始化之前执行；只读指定通道/`.evtx` 文件，按固定帧格式（magic/version/type/length + UTF-8/UTF-16 载荷）把记录写入命名管道；参数个数/类型错误返回 2，读取失败通过 ERROR 帧返回 1；不写用户路径、不经过 shell | 应该 |
 
 ### REQ-ASSOC 文件关联（双平台）
 
@@ -270,7 +288,7 @@
 | REQ-PLAT-05 | 路径处理全部使用 Qt API；文件扩展名与格式映射大小写不敏感（`.LOG` 与 `.log` 等价）；不依赖文件名排序规则 | 必须 |
 | REQ-PLAT-06 | 高 DPI：在 100%/125%/150%/200% 缩放下布局不错位；默认窗口尺寸按可用屏幕自适应收缩（不低于逻辑 1024×600） | 必须 |
 | REQ-PLAT-07 | Wayland 与 X11 均可运行（不调用平台专有图形 API）；如遇环境问题允许通过 `QT_QPA_PLATFORM` 覆盖，属可接受限制 | 应该 |
-| REQ-PLAT-08 | 不调用平台专有外部进程（如 `tasklist`/`ps`）；不依赖 shell 特性。**唯一例外**：Linux 提权读取（REQ-REL-04）允许调用系统认证助手 `pkexec`——以参数数组直接启动（不经过 shell）、目标程序取本应用的绝对路径、参数固定为 `--elevated-stream <路径>`；该能力为可选，`pkexec` 缺失时降级，不影响其它功能 | 必须 |
+| REQ-PLAT-08 | 不调用平台专有外部进程（如 `tasklist`/`ps`）；不依赖 shell 特性。**例外**：① Linux 提权读取（REQ-REL-04）允许调用系统认证助手 `pkexec`——以参数数组直接启动（不经过 shell）、目标程序取本应用的绝对路径、参数固定为 `--elevated-stream <路径>`；② Windows 事件日志提权读取（REQ-EVT-10）允许 `ShellExecuteExW(runas)` 启动**本程序自身**的内部助手模式 `--event-log-stream`（参数固定、不经过 shell、只读）；两种能力均为可选，缺失/取消时降级，不影响其它功能 | 必须 |
 | REQ-PLAT-09 | 版本信息、About 页面与日志输出中标注当前平台与构建类型，便于问题定位 | 应该 |
 | REQ-PLAT-10 | Linux 侧代码路径按可移植性要求编写；v1 原始计划不做构建与运行验证，**1.36 起已由用户在 Debian 原生环境完成构建、测试与打包验证**；未验证状态必须在文档中明确标注（历史状态见 §1.3、AC-16/AC-17、修订记录） | 必须 |
 
@@ -331,6 +349,10 @@
 | macOS 支持 | 不做 |
 | 多标签页 / 多窗口 | 不做（单文档合并视图） |
 | 远程/网络日志源（syslog 监听、SSH 读取、journalctl 实时订阅） | 不做（仅支持 journalctl 导出文件的离线查看） |
+| Windows 事件日志写入 / 清空 / 导出 | 不做（只读查看） |
+| Windows 事件日志 `EvtSubscribe` 推送式订阅 | 本期用 2 秒 `EventRecordID` 增量轮询；推送留作后续优化 |
+| 非 Windows 平台解析 `.evtx` / 自研 BinXML 解析器 | 不做（仅使用 Windows 原生 API） |
+| Security 通道实时监控（需常驻提权） | 本轮不做；Security 仅支持 UAC 提权查看（20k/全部），监控留待后续（见 `docs/plan-eventlog-phase2.md` Phase C） |
 | 日志内容编辑/保存回原文件 | 不做（只读） |
 | ICU 依赖 | 默认不引入；GB18030 由平台 API（Windows ANSI 代码页 / Linux iconv）+ 内置紧凑解码表兜底完成 |
 
@@ -358,6 +380,9 @@
 | AC-18 | CPack 配置与 `packaging/linux/` 资源文件存在且语法正确（`cmake --install --dry-run` 级别的静态检查） | 静态检查 | 是（静态） |
 | AC-19 | 打开日志文件后状态栏左下角显示 `Loaded in …`，时长随量级自适应（秒 / 分+秒 / 时+分+秒）；关闭文档后清除 | 单元测试（格式化）+ UI 用例 | 是 |
 | AC-20 | 把发行包解压到任意目录（如 `C:\log-viewer`）后：执行 `log-viewer.exe --register-association` 或同目录 `register-association.ps1`，双击 `.log` 用本应用打开；整体搬移到新目录后 Settings ▸ File Association 显示为未勾选，重新勾选后关联指向新路径；`--unregister-association` 后 `HKCU\Software\Classes` 相关键完全移除且扩展名原值被还原 | 命令行验证 + 注册表核对 + UI 用例 | 是 |
+| AC-21 | Windows 启动后 File ▸ Windows Event Log 入口出现：Application / System 可打开并显示最近 20,000 条事件，过滤与查找生效；归档 `.evtx` 可打开；Security 无权限时提示以管理员身份运行；Linux 构建不出现该入口且既有测试全部通过 | 手工 + Windows 集成测试（无权限时 SKIP）+ UI 用例 | Windows 是；Linux 仅验证入口不存在 |
+| AC-22 | 普通用户打开 Security 通道 → 出现 **Open as Administrator…** → UAC 确认后显示最近 20,000 条（本地时间、最新在前、第一列 Record ID）；取消授权后保留原文档且无残留助手进程；关闭文档/退出程序后管道与助手进程清理干净 | Windows 手工（UAC）+ 协议单测（非提权助手） | Windows 是 |
+| AC-23 | 对 Application/System 勾选 Monitor 后产生新事件，2 秒内出现在第一行；滚离顶部显示 `New events: N ▲`，点击回顶部；过滤/查找/级别计数同步；连续 10 分钟无重复/丢行；清空通道后自动重建；新增 50,000 条后自动暂停；`.evtx` 文件不显示 Monitor 可用 | UI 用例（mock watcher）+ Windows 手工 | Windows 是 |
 
 ## 9. 开放问题与建议项
 
@@ -422,3 +447,7 @@
 | 1.39 | 2026-10-01 | AI 助手（依据用户指示，第二期） | 新增 Linux 提权打开（一期预留的第二期）：REQ-REL-04（pkexec 只读快照：私有临时目录 0700/0600、root 只读并仅写 stdout、关闭/替换/退出即删、禁用 Monitor、Refresh 重新授权、失败降级并保留红色告警）、REQ-CLI-11（内部辅助模式 `--elevated-stream`，GUI 初始化前执行、固定参数、不经 shell）、REQ-PLAT-08 增加 `pkexec` 例外条款；新增 `src/platform/ElevatedFileReader` 与 `tst_elevated` |
 | 1.40 | 2026-10-01 | AI 助手（依据用户反馈） | UI 调整：状态栏「以管理员权限打开…」由扁平按钮改为**醒目的高亮按钮**（`QPushButton#elevateButton`：填充主题化告警色、对比文字、加粗、圆角、hover/pressed 状态；浅色 `#C62828`+白字 5.62:1、深色 `#FF6B6B`+深色字 5.94:1），状态栏高度不因按钮出现而变化（实测 25 px）；补充 `LOGVIEWER_DUMP_LAYOUT` 的 `statusBar` / `elevateButton` 诊断输出与 UI 用例断言（非扁平、样式规则存在）；REQ-REL-04 同步 |
 | 1.41 | 2026-10-01 | AI 助手（依据用户反馈） | 修复「打开 `/var/log/boot.log` 时特殊字符显示为方块、行数偏少」：REQ-PARSE-11 补充**单独 CR** 换行（实测 221 个 `\r` 被吞、455 行只显示 234 行）；新增 **REQ-PARSE-12**（剥离 ANSI CSI/OSC/ESC 与 C0/C1 控制字符，保留 TAB/LF；SGR 前景/背景/加粗/斜体/下划线按终端语义渲染，含 256 色与真彩，色彩随主题并提供 ≥4.5:1 可读调色板；查找/过滤/复制/导出统一使用清理后文本）；REQ-MAINT-05 测试样本补充 CR 变体 |
+| 1.42 | 2026-11-23 | AI 助手（依据用户需求） | 新增 **FMT-7 / REQ-EVT-01…08**：Windows 事件日志原生查看（实时通道 Application/System/Setup/Security + `All Channels…` + 归档 `.evtx` 文件），使用 `wevtapi`（ChannelPath / FilePath 查询，不调用外部进程）；只读、禁用 Monitor/Refresh、默认最近 20,000 条并标记 truncated、消息优先 `EvtFormatMessage` 并回退 EventData、权限失败明确提示；范围外补充日志写入/清空、`EvtSubscribe` 监控、非 Windows `.evtx` 解析与 UAC 提权；新增 AC-21 |
+| 1.43 | 2026-11-23 | AI 助手（依据用户需求） | 新增 **REQ-EVT-09**：截断的事件日志支持分档继续加载——File 菜单与状态栏「Load More Events…」提供「再加载 20,000 条」或（确认后）「加载全部」；在原通道/文件上按新上限重新查询并替换文档，失败保留当前文档，视图重建并重置滚动位置与选中行 |
+| 1.44 | 2026-11-23 | AI 助手（依据用户反馈） | 调整事件日志显示：改为**新→旧**（最新记录在第一行），不再反转为旧→新；`SystemTime`（UTC）在 provider 中转换为**本地时间**显示，绝对时刻保留用于时间过滤；REQ-EVT-06 同步 |
+| 1.45 | 2026-11-24 | AI 助手（依据二期计划确认） | 新增 **REQ-EVT-10**（Windows UAC 提权读取：辅助进程 + 命名管道）、**REQ-EVT-11**（实时通道监控：2 s EventRecordID 增量、顶部前插、50k 新增上限、通道清空重建）与 **REQ-CLI-12**（内部 `--event-log-stream` 助手）；修订 REQ-EVT-05（Monitor 对实时通道开放）、REQ-EVT-06 与 REQ-PARSE-03（第一列改显 EventRecordID）、REQ-EVT-09（监控中加载更多自动恢复）、REQ-PLAT-08（新增 Windows runas 例外）；Security 监控本轮不做；新增 AC-22/AC-23；§7 同步 |

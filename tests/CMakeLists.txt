@@ -31,6 +31,7 @@ set(LOGVIEWER_TESTS
     tst_duration.cpp
     tst_association.cpp
     tst_elevated.cpp
+    tst_eventlog.cpp
     tst_ansitext.cpp
 )
 

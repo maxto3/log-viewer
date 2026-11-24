@@ -79,8 +79,8 @@ public:
     /// All events usually share one physical line, so the entries are numbered.
     bool numbersEntriesSequentially() const override { return true; }
 
-private:
-    /// Parses one `<Event>…</Event>` element.
+    /// Parses one `<Event>…</Event>` element. Shared with the native Windows
+    /// event log provider, which renders events as XML (REQ-EVT-07).
     static bool parseEventXml(const QString &xml, LogEntry &entry);
 };
 

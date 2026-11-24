@@ -113,8 +113,10 @@ void LogTableModel::rebuildColumns()
     const DocumentInfo info = m_provider->documentInfo();
 
     // The physical line number comes first: it is the natural anchor when
-    // comparing the table with the raw file (spec.md REQ-PARSE-03).
-    m_columns.append({ColumnKind::Line, {}, defaultWidth(ColumnKind::Line)});
+    // comparing the table with the raw file (spec.md REQ-PARSE-03). Native
+    // event logs show their stable EventRecordID instead (REQ-EVT-06).
+    const bool eventLogDocument = info.formatId == QLatin1String("wevt_native");
+    m_columns.append({ColumnKind::Line, {}, eventLogDocument ? 96 : defaultWidth(ColumnKind::Line)});
     if (info.multiFile)
         m_columns.append({ColumnKind::File, {}, defaultWidth(ColumnKind::File)});
     if (withTime > 0)
@@ -325,6 +327,10 @@ QVariant LogTableModel::headerData(int section, Qt::Orientation orientation, int
     // is log data, not UI text, so it stays untranslated.
     if (column.kind == ColumnKind::Extra)
         return column.extraKey;
+    if (column.kind == ColumnKind::Line && m_provider
+        && m_provider->documentInfo().formatId == QLatin1String("wevt_native")) {
+        return QCoreApplication::translate("Columns", "Record ID");
+    }
     return columnTitle(column.kind);
 }
 
@@ -368,6 +374,41 @@ void LogTableModel::appendRows(int firstRow)
         endInsertRows();
     }
     m_findRowsValid = false;
+}
+
+int LogTableModel::prependRows(int count)
+{
+    if (!m_provider || count <= 0)
+        return 0;
+    count = qMin(count, m_provider->rowCount());
+
+    if (!m_filterActive) {
+        beginInsertRows(QModelIndex(), 0, count - 1);
+        endInsertRows();
+        clearRowCaches();
+        return count;
+    }
+
+    // New provider rows 0..count-1. Existing visible rows keep their identity
+    // but move down by count; only matching new rows become visible at the top.
+    QVector<int> front;
+    front.reserve(count);
+    for (int source = 0; source < count; ++source) {
+        if (entryMatches(m_provider->entryAt(source)))
+            front.append(source);
+    }
+
+    const int added = static_cast<int>(front.size());
+    if (added > 0)
+        beginInsertRows(QModelIndex(), 0, added - 1);
+    for (int &row : m_visibleRows)
+        row += count;
+    if (added > 0) {
+        m_visibleRows.insert(m_visibleRows.begin(), front.begin(), front.end());
+        endInsertRows();
+    }
+    clearRowCaches();
+    return added;
 }
 
 void LogTableModel::setFilterSpec(const FilterSpec &spec)

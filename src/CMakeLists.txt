@@ -10,6 +10,9 @@ set(LOGVIEWER_CORE_SOURCES
 
     platform/EncodingBackend.cpp
     platform/EncodingBackend.h
+    platform/ElevatedEventLog.cpp
+    platform/ElevatedEventLog.h
+    platform/EventLogBackend.cpp
     platform/ElevatedFileReader.cpp
     platform/ElevatedFileReader.h
     platform/FileAssociation.cpp
@@ -22,8 +25,13 @@ set(LOGVIEWER_CORE_SOURCES
     core/ColumnKind.h
     core/DurationFormat.cpp
     core/DurationFormat.h
+    core/EventLogProvider.cpp
+    core/EventLogProvider.h
+    core/EventLogWatcher.cpp
+    core/EventLogWatcher.h
     core/FilterSpec.h
     core/IEntryProvider.h
+    core/IEventLogBackend.h
     core/LogDocument.cpp
     core/LogDocument.h
     core/LogEntry.h
@@ -78,7 +86,7 @@ target_link_libraries(logviewer_core PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets)
 # platform/FileAssociation writes HKCU\Software\Classes through the Win32
 # registry API and pokes Explorer afterwards (REQ-ASSOC-06/08).
 if(WIN32)
-    target_link_libraries(logviewer_core PRIVATE advapi32 shell32)
+    target_link_libraries(logviewer_core PRIVATE advapi32 shell32 wevtapi)
 endif()
 
 set(LOGVIEWER_UI_SOURCES
@@ -88,6 +96,8 @@ set(LOGVIEWER_UI_SOURCES
     ui/DemoData.h
     ui/DetailPane.cpp
     ui/DetailPane.h
+    ui/EventLogChannelDialog.cpp
+    ui/EventLogChannelDialog.h
     ui/FilterPanel.cpp
     ui/FilterPanel.h
     ui/LogHeaderView.cpp

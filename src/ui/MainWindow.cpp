@@ -3,6 +3,8 @@
 #include "app/ThemeManager.h"
 #include "app/TranslationManager.h"
 #include "core/DurationFormat.h"
+#include "core/EventLogProvider.h"
+#include "core/EventLogWatcher.h"
 #include "core/FilterSpec.h"
 #include "core/LogDocument.h"
 #include "core/LogSource.h"
@@ -10,21 +12,25 @@
 #include "core/LogWatcher.h"
 #include "core/Matcher.h"
 #include "highlight/HighlightTheme.h"
+#include "platform/ElevatedEventLog.h"
 #include "platform/ElevatedFileReader.h"
 #include "platform/FileAssociation.h"
 #include "ui/AboutDialog.h"
 #include "ui/DemoData.h"
 #include "ui/DetailPane.h"
+#include "ui/EventLogChannelDialog.h"
 #include "ui/FilterPanel.h"
 #include "ui/LogTableView.h"
 #include "ui/StatusWarningLabel.h"
 
 #include <QAction>
 #include <QActionGroup>
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QColorDialog>
 #include <QCoreApplication>
+#include <QDialog>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QElapsedTimer>
@@ -81,6 +87,7 @@ MainWindow::MainWindow(SettingsStore *settings, ThemeManager *theme, Translation
     setAcceptDrops(true);
 
     createActions();
+    m_eventLogBackend = createEventLogBackend();
     createMenus();
     createCentralWidget();
     createStatusBar();
@@ -159,6 +166,12 @@ void MainWindow::createActions()
     m_exportAction = new QAction(this);
     m_exportAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+E")));
     connect(m_exportAction, &QAction::triggered, this, &MainWindow::onExportFiltered);
+
+    // Only meaningful for a truncated native event log; enabled by
+    // updateDocumentUi() when such a document is attached (REQ-EVT-09).
+    m_loadMoreEventsAction = new QAction(this);
+    m_loadMoreEventsAction->setEnabled(false);
+    connect(m_loadMoreEventsAction, &QAction::triggered, this, &MainWindow::onLoadMoreEvents);
 
     m_exitAction = new QAction(this);
     m_exitAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Q")));
@@ -295,6 +308,10 @@ void MainWindow::createMenus()
 {
     m_fileMenu = menuBar()->addMenu(QString());
     m_fileMenu->addAction(m_openAction);
+    // Windows only: open a live channel or an archived .evtx file (REQ-EVT-01).
+    buildEventLogMenu();
+    if (m_eventLogBackend && m_eventLogBackend->isSupported())
+        m_fileMenu->addAction(m_loadMoreEventsAction);
     m_fileMenu->addAction(m_refreshAction);
     m_fileMenu->addAction(m_closeAction);
     m_fileMenu->addAction(m_monitorAction);
@@ -360,6 +377,34 @@ void MainWindow::createMenus()
     menuBar()->addAction(m_aboutAction);
 }
 
+void MainWindow::buildEventLogMenu()
+{
+    if (!m_eventLogBackend || !m_eventLogBackend->isSupported())
+        return;
+
+    m_eventLogMenu = m_fileMenu->addMenu(QString());
+
+    // Classic channels exist on every Windows installation (REQ-EVT-02). The
+    // names are technical identifiers from the Windows API and are not
+    // translated.
+    const QStringList commonChannels = {
+        QStringLiteral("Application"), QStringLiteral("System"), QStringLiteral("Setup"),
+        QStringLiteral("Security")};
+    for (const QString &channel : commonChannels) {
+        QAction *action = m_eventLogMenu->addAction(channel);
+        connect(action, &QAction::triggered, this,
+                [this, channel] { openEventLogChannel(channel); });
+    }
+
+    m_eventLogMenu->addSeparator();
+    m_eventLogAllChannelsAction = m_eventLogMenu->addAction(QString());
+    connect(m_eventLogAllChannelsAction, &QAction::triggered, this,
+            &MainWindow::onOpenEventLogChannels);
+
+    m_eventLogFileAction = m_eventLogMenu->addAction(QString());
+    connect(m_eventLogFileAction, &QAction::triggered, this, &MainWindow::onOpenEventLogFile);
+}
+
 void MainWindow::createCentralWidget()
 {
     auto *central = new QWidget(this);
@@ -408,6 +453,13 @@ void MainWindow::createCentralWidget()
     m_emptyOpenButton = new QPushButton(m_emptyState);
     connect(m_emptyOpenButton, &QPushButton::clicked, this, &MainWindow::onOpen);
     buttonRow->addWidget(m_emptyOpenButton);
+
+    // Second empty state entry on Windows (REQ-EVT-01); hidden elsewhere.
+    m_emptyEventLogButton = new QPushButton(m_emptyState);
+    m_emptyEventLogButton->setVisible(m_eventLogBackend && m_eventLogBackend->isSupported());
+    connect(m_emptyEventLogButton, &QPushButton::clicked, this,
+            &MainWindow::onOpenEventLogChannels);
+    buttonRow->addWidget(m_emptyEventLogButton);
     buttonRow->addStretch(1);
     emptyLayout->addLayout(buttonRow);
     emptyLayout->addStretch(1);
@@ -447,6 +499,16 @@ void MainWindow::createStatusBar()
     m_elevateButton->hide();
     connect(m_elevateButton, &QPushButton::clicked, this, &MainWindow::onElevateClicked);
     statusBar()->addWidget(m_elevateButton);
+
+    // Windows event logs: appears only while the current document is truncated
+    // (REQ-EVT-09). A permanent widget so a temporary status message (e.g. the
+    // truncation notice) does not hide it.
+    m_loadMoreEventsButton = new QPushButton(tr("Load More Events…"), statusBar());
+    m_loadMoreEventsButton->setObjectName(QStringLiteral("loadMoreEventsButton"));
+    m_loadMoreEventsButton->setCursor(Qt::PointingHandCursor);
+    m_loadMoreEventsButton->hide();
+    connect(m_loadMoreEventsButton, &QPushButton::clicked, this, &MainWindow::onLoadMoreEvents);
+    statusBar()->addPermanentWidget(m_loadMoreEventsButton);
 
     // Bottom left: duration of the last file open (REQ-UI-15). Normal status
     // widgets sit on the left and give way to temporary messages.
@@ -537,10 +599,23 @@ void MainWindow::retranslateUi()
     m_refreshAction->setText(tr("Refresh"));
     m_closeAction->setText(tr("Close"));
     m_monitorAction->setText(tr("Monitor"));
-    m_monitorAction->setToolTip(tr("Follow the file like \"tail -f\" (Ctrl+M, single file only)"));
+    m_monitorAction->setToolTip(
+        tr("Follow the file or event log channel like \"tail -f\" (Ctrl+M)"));
     m_exportAction->setText(tr("Export Filtered Results…"));
     m_exitAction->setText(tr("Exit"));
     m_clearRecentAction->setText(tr("Clear List"));
+
+    if (m_eventLogMenu)
+        m_eventLogMenu->setTitle(tr("Windows Event Log"));
+    if (m_eventLogAllChannelsAction)
+        m_eventLogAllChannelsAction->setText(tr("All Channels…"));
+    if (m_eventLogFileAction)
+        m_eventLogFileAction->setText(tr("Open .evtx File…"));
+    m_loadMoreEventsAction->setText(tr("Load More Events…"));
+    m_loadMoreEventsAction->setToolTip(
+        tr("Load older events from the current Windows event log"));
+    m_loadMoreEventsButton->setText(tr("Load More Events…"));
+    m_loadMoreEventsButton->setToolTip(m_loadMoreEventsAction->toolTip());
 
     m_interfaceFontAction->setText(tr("Interface Font…"));
     m_tableFontAction->setText(tr("Log Table Font…"));
@@ -586,6 +661,8 @@ void MainWindow::retranslateUi()
     m_emptyTitle->setText(tr("No log file open"));
     updateEmptyHint();
     m_emptyOpenButton->setText(tr("Open Log File…"));
+    if (m_emptyEventLogButton)
+        m_emptyEventLogButton->setText(tr("Open Windows Event Log…"));
     m_elevateButton->setText(tr("Open as Administrator…"));
 
     m_monitorLabel->setText(tr("Monitor: off"));
@@ -805,12 +882,18 @@ void MainWindow::onMonitorToggled(bool enabled)
 
 void MainWindow::startMonitor()
 {
+    if (isEventLogChannelDocument()) {
+        startEventLogMonitor();
+        return;
+    }
+
     if (!m_source || !m_watcher) {
         if (m_monitorAction->isChecked())
             m_monitorAction->setChecked(false);
         return;
     }
     m_watcher->start(m_source.get());
+    m_tableView->setFollowSide(LogTableView::FollowSide::Bottom);
     m_tableView->setPendingNewRows(0);
     m_tableView->scrollToBottomNow();
     statusBar()->showMessage(tr("Monitoring %1 (tail -f)").arg(m_source->documentInfo().fileName),
@@ -818,10 +901,51 @@ void MainWindow::startMonitor()
     updateMonitorLabel();
 }
 
+bool MainWindow::isEventLogChannelDocument() const
+{
+    return !m_eventLogChannel.isEmpty() && !m_eventLogElevated;
+}
+
+bool MainWindow::isEventLogMonitoring() const
+{
+    return m_eventLogWatcher && m_eventLogWatcher->isActive();
+}
+
+void MainWindow::startEventLogMonitor()
+{
+    const auto provider = std::dynamic_pointer_cast<EventLogProvider>(m_provider);
+    if (!provider || !m_eventLogBackend || m_eventLogChannel.isEmpty()) {
+        if (m_monitorAction->isChecked())
+            m_monitorAction->setChecked(false);
+        return;
+    }
+
+    if (!m_eventLogWatcher) {
+        m_eventLogWatcher = std::make_unique<EventLogWatcher>(this);
+        connect(m_eventLogWatcher.get(), &EventLogWatcher::recordsPrepended, this,
+                &MainWindow::onEventLogRowsPrepended);
+        connect(m_eventLogWatcher.get(), &EventLogWatcher::documentRebuilt, this,
+                &MainWindow::onEventLogDocumentRebuilt);
+        connect(m_eventLogWatcher.get(), &EventLogWatcher::watchingFailed, this,
+                &MainWindow::onEventLogWatchingFailed);
+        connect(m_eventLogWatcher.get(), &EventLogWatcher::limitReached, this,
+                &MainWindow::onEventLogLimitReached);
+    }
+
+    m_eventLogWatcher->start(m_eventLogBackend, provider, 2000);
+    m_tableView->setFollowSide(LogTableView::FollowSide::Top);
+    m_tableView->setPendingNewRows(0);
+    m_tableView->scrollToTopNow();
+    statusBar()->showMessage(tr("Monitoring %1 (every 2 s)").arg(m_eventLogChannel), 4000);
+    updateMonitorLabel();
+}
+
 void MainWindow::stopMonitor()
 {
     if (m_watcher)
         m_watcher->stop();
+    if (m_eventLogWatcher)
+        m_eventLogWatcher->stop();
     if (m_tableView)
         m_tableView->setPendingNewRows(0);
     updateMonitorLabel();
@@ -831,13 +955,15 @@ void MainWindow::updateMonitorLabel()
 {
     if (!m_monitorLabel)
         return;
-    if (!m_watcher || !m_watcher->isActive()) {
+    const bool active = (m_eventLogWatcher && m_eventLogWatcher->isActive())
+        || (m_watcher && m_watcher->isActive());
+    if (!active) {
         m_monitorLabel->setText(tr("Monitor: off"));
         return;
     }
     const int pending = m_tableView ? m_tableView->pendingNewRows() : 0;
     if (pending > 0)
-        m_monitorLabel->setText(tr("Monitor: on (%1 new lines)").arg(pending));
+        m_monitorLabel->setText(tr("Monitor: on (%1 new events)").arg(pending));
     else
         m_monitorLabel->setText(tr("Monitor: on"));
 }
@@ -859,6 +985,61 @@ void MainWindow::onRowsAppended(int firstRow, int count)
     updateMonitorLabel();
 }
 
+void MainWindow::onEventLogRowsPrepended(int count)
+{
+    if (!m_provider || count <= 0)
+        return;
+
+    const bool follow = m_tableView->isAtTop();
+    const int anchorRow = m_tableView->rowAt(0);
+    const int inserted = m_model->prependRows(count);
+
+    if (follow) {
+        m_tableView->scrollToTopNow();
+    } else if (anchorRow >= 0 && inserted > 0) {
+        // Keep the row the user was reading at the same viewport position;
+        // prepending shifts every existing view row down (REQ-EVT-11).
+        m_tableView->scrollTo(m_model->index(anchorRow + inserted, 0),
+                              QAbstractItemView::PositionAtTop);
+    }
+
+    if (!follow) {
+        m_tableView->setPendingNewRows(m_tableView->pendingNewRows() + count);
+        statusBar()->showMessage(tr("%1 new events (follow paused)").arg(count), 3000);
+    }
+    if (m_filterPanel)
+        m_filterPanel->updateLevelCounts(m_provider->levelCounts());
+    updateMonitorLabel();
+}
+
+void MainWindow::onEventLogDocumentRebuilt()
+{
+    const bool wasMonitoring = m_monitorAction && m_monitorAction->isChecked();
+    statusBar()->showMessage(
+        tr("The event log was cleared or recreated; the document was reloaded."), 6000);
+    if (!loadEventLog(m_eventLogChannel, m_eventLogPath, m_eventLogMaxRecords, wasMonitoring)
+        && m_monitorAction && m_monitorAction->isChecked()) {
+        m_monitorAction->setChecked(false);
+    }
+}
+
+void MainWindow::onEventLogLimitReached()
+{
+    if (m_monitorAction && m_monitorAction->isChecked())
+        m_monitorAction->setChecked(false);
+    statusBar()->showMessage(
+        tr("Live monitoring paused: %1 new events reached the limit.")
+            .arg(EventLogWatcher::kMaxAddedRecords),
+        10000);
+}
+
+void MainWindow::onEventLogWatchingFailed(const QString &message)
+{
+    reportError(message);
+    if (m_monitorAction && m_monitorAction->isChecked())
+        m_monitorAction->setChecked(false);
+}
+
 void MainWindow::onDocumentRebuilt()
 {
     if (!m_source)
@@ -878,12 +1059,192 @@ void MainWindow::onDocumentRebuilt()
 
 void MainWindow::onOpen()
 {
-    const QStringList files = QFileDialog::getOpenFileNames(
-        this, tr("Open Log Files"), QString(),
-        tr("Log files (*.log *.txt *.out);;All files (*)"));
+    QString filters = tr("Log files (*.log *.txt *.out);;All files (*)");
+    if (m_eventLogBackend && m_eventLogBackend->isSupported())
+        filters = tr("Log files (*.log *.txt *.out);;Windows event logs (*.evtx);;All files (*)");
+    const QStringList files = QFileDialog::getOpenFileNames(this, tr("Open Log Files"), QString(),
+                                                            filters);
     if (files.isEmpty())
         return;
     openPaths(files, m_forcedFormatId);
+}
+
+void MainWindow::onOpenEventLogChannels()
+{
+    if (!m_eventLogBackend || !m_eventLogBackend->isSupported())
+        return;
+
+    EventLogChannelDialog dialog(m_eventLogBackend, this);
+    if (dialog.exec() == QDialog::Accepted && !dialog.selectedChannel().isEmpty())
+        openEventLogChannel(dialog.selectedChannel());
+}
+
+void MainWindow::onOpenEventLogFile()
+{
+    if (!m_eventLogBackend || !m_eventLogBackend->isSupported())
+        return;
+
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Open Windows Event Log File"), QString(),
+        tr("Windows event logs (*.evtx);;All files (*)"));
+    if (!path.isEmpty())
+        openEventLogFile(path);
+}
+
+void MainWindow::openEventLogChannel(const QString &channel)
+{
+    loadEventLog(channel, QString(), EventLogProvider::kMaxRecords);
+}
+
+void MainWindow::openEventLogFile(const QString &path)
+{
+    loadEventLog(QString(), path, EventLogProvider::kMaxRecords);
+}
+
+bool MainWindow::loadEventLog(const QString &channel, const QString &path, int maxRecords,
+                              bool resumeMonitoring)
+{
+    if (!m_eventLogBackend || !m_eventLogBackend->isSupported())
+        return false;
+    if (channel.isEmpty() == path.isEmpty())   // exactly one target
+        return false;
+
+    QElapsedTimer loadTimer;
+    loadTimer.start();
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    EventLogError errorKind = EventLogError::None;
+    const auto provider = channel.isEmpty()
+        ? EventLogProvider::openFile(m_eventLogBackend, path, maxRecords, &error, &errorKind)
+        : EventLogProvider::openChannel(m_eventLogBackend, channel, maxRecords, &error,
+                                        &errorKind);
+    QApplication::restoreOverrideCursor();
+
+    if (!provider) {
+        // Keep the current document (and its "load more" target) intact.
+        reportError(error);
+        if (errorKind == EventLogError::AccessDenied) {
+            // Offer the UAC helper (REQ-EVT-10); reportError() cleared the
+            // previous offer, so store the target afterwards.
+            m_pendingEventLogElevationChannel = channel;
+            m_pendingEventLogElevationPath = path;
+            if (m_elevateButton) {
+                const QString target = channel.isEmpty() ? path : channel;
+                m_elevateButton->setText(tr("Open as Administrator…"));
+                m_elevateButton->setToolTip(
+                    tr("Read \"%1\" with administrator rights (UAC).").arg(target));
+                m_elevateButton->show();
+            }
+        }
+        return false;
+    }
+
+    m_eventLogElevated = false;
+    // A native event log replaces a pending elevated snapshot and is not a
+    // regular file: Refresh stays disabled through setProvider().
+    releaseSnapshot();
+    clearElevationOffer();
+    m_forcedFormatId.clear();
+    setProvider(provider, QString());
+    setLoadTime(loadTimer.elapsed());
+
+    if (provider->documentInfo().truncated) {
+        statusBar()->showMessage(
+            tr("Showing the newest %1 events; older events are not loaded.")
+                .arg(provider->rowCount()),
+            8000);
+    }
+
+    // "Load more" / channel rebuild: keep the user's monitor switch on and
+    // restart polling against the fresh provider (REQ-EVT-09/11).
+    if (resumeMonitoring && isEventLogChannelDocument())
+        m_monitorAction->setChecked(true);
+
+    return true;
+}
+
+void MainWindow::loadElevatedEventLog(const QString &channel, const QString &path, int maxRecords)
+{
+    if (!ElevatedEventLog::isSupported() || (channel.isEmpty() == path.isEmpty()))
+        return;
+
+    QElapsedTimer loadTimer;
+    loadTimer.start();
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    const EventLogReadResult result =
+        ElevatedEventLog::read(channel, path, maxRecords, &error);
+    QApplication::restoreOverrideCursor();
+
+    if (!result.error.isEmpty()) {
+        reportError(result.error.isEmpty() ? error : result.error);
+        // Keep the offer clickable for another attempt.
+        m_pendingEventLogElevationChannel = channel;
+        m_pendingEventLogElevationPath = path;
+        if (m_elevateButton)
+            m_elevateButton->show();
+        return;
+    }
+
+    const QFileInfo fileInfo(path);
+    const QString fileName = channel.isEmpty() ? fileInfo.fileName() : channel;
+    const QString filePath = channel.isEmpty() ? fileInfo.absoluteFilePath() : QString();
+    const auto provider =
+        EventLogProvider::fromResult(channel, fileName, filePath, maxRecords, result);
+
+    releaseSnapshot();
+    clearElevationOffer();
+    m_forcedFormatId.clear();
+    m_eventLogElevated = true;
+    setProvider(provider, QString());
+    setLoadTime(loadTimer.elapsed());
+
+    if (result.truncated) {
+        statusBar()->showMessage(
+            tr("Showing the newest %1 events; older events are not loaded.")
+                .arg(provider->rowCount()),
+            8000);
+    }
+}
+
+void MainWindow::onLoadMoreEvents()
+{
+    if (!m_provider || (m_eventLogChannel.isEmpty() && m_eventLogPath.isEmpty()))
+        return;
+
+    const int loaded = m_provider->rowCount();
+    const bool wasMonitoring = m_monitorAction && m_monitorAction->isChecked();
+
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Information);
+    box.setWindowTitle(tr("Truncated Event Log"));
+    box.setText(tr("Only the newest %1 events are loaded.").arg(loaded));
+    QPushButton *more = box.addButton(
+        tr("Load %1 More").arg(EventLogProvider::kMaxRecords), QMessageBox::AcceptRole);
+    QPushButton *all = box.addButton(tr("Load All Events…"), QMessageBox::ActionRole);
+    box.addButton(QMessageBox::Cancel);
+    box.exec();
+
+    if (box.clickedButton() == more) {
+        const int next = m_eventLogMaxRecords > 0
+            ? m_eventLogMaxRecords + EventLogProvider::kMaxRecords
+            : EventLogProvider::kMaxRecords;
+        if (m_eventLogElevated)
+            loadElevatedEventLog(m_eventLogChannel, m_eventLogPath, next);
+        else
+            loadEventLog(m_eventLogChannel, m_eventLogPath, next, wasMonitoring);
+    } else if (box.clickedButton() == all) {
+        const auto answer = QMessageBox::warning(
+            this, tr("Load All Events"),
+            tr("Loading every event can take a long time and use a lot of memory. Continue?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer == QMessageBox::Yes) {
+            if (m_eventLogElevated)
+                loadElevatedEventLog(m_eventLogChannel, m_eventLogPath, 0);
+            else
+                loadEventLog(m_eventLogChannel, m_eventLogPath, 0, wasMonitoring);
+        }
+    }
 }
 
 void MainWindow::onRefresh()
@@ -907,6 +1268,10 @@ void MainWindow::onCloseDocument()
     m_source.reset();
     m_provider.reset();
     m_currentPath.clear();
+    m_eventLogChannel.clear();
+    m_eventLogPath.clear();
+    m_eventLogMaxRecords = 0;
+    m_eventLogElevated = false;
     clearElevationOffer();
     releaseSnapshot();
     m_tableView->clearExpansion();
@@ -975,8 +1340,9 @@ void MainWindow::onCurrentRowChanged(const QModelIndex &current)
         m_detailPane->clearEntry();
         return;
     }
-    m_detailPane->setEntry(m_model->entry(current.row()),
-                           m_provider ? m_provider->documentInfo().fileName : QString());
+    const DocumentInfo info = m_provider ? m_provider->documentInfo() : DocumentInfo();
+    m_detailPane->setEntry(m_model->entry(current.row()), info.fileName,
+                           info.formatId == QLatin1String("wevt_native"));
 }
 
 void MainWindow::onRowActivatedByUser(int row)
@@ -993,7 +1359,8 @@ void MainWindow::showEntryInDetailPane(int row)
     const LogEntry *entry = m_model->entry(row);
     if (!entry)
         return;
-    m_detailPane->setEntry(entry, m_provider ? m_provider->documentInfo().fileName : QString());
+    const DocumentInfo info = m_provider ? m_provider->documentInfo() : DocumentInfo();
+    m_detailPane->setEntry(entry, info.fileName, info.formatId == QLatin1String("wevt_native"));
     showDetailPane();
 }
 
@@ -1268,6 +1635,19 @@ void MainWindow::setProvider(const EntryProviderPtr &provider, const QString &pa
     m_provider = provider;
     m_currentPath = path;
 
+    // Track the native event log target so "Load More Events…" can requery it
+    // (REQ-EVT-09); any other provider clears the state.
+    m_eventLogChannel.clear();
+    m_eventLogPath.clear();
+    m_eventLogMaxRecords = 0;
+    if (auto eventLog = std::dynamic_pointer_cast<EventLogProvider>(provider)) {
+        m_eventLogChannel = eventLog->channelName();
+        m_eventLogPath = eventLog->documentInfo().filePath;
+        m_eventLogMaxRecords = eventLog->requestedLimit();
+    } else {
+        m_eventLogElevated = false;
+    }
+
     // Live monitoring works for single file documents only (REQ-MON-01).
     m_source.reset();
     if (auto document = std::dynamic_pointer_cast<LogDocument>(provider)) {
@@ -1276,6 +1656,15 @@ void MainWindow::setProvider(const EntryProviderPtr &provider, const QString &pa
     } else if (auto source = std::dynamic_pointer_cast<LogSource>(provider)) {
         m_source = source;
     }
+
+    // Replacing the document always ends the previous monitor. loadEventLog()
+    // explicitly restarts it for "load more"/channel rebuild (REQ-EVT-09/11).
+    if (m_monitorAction && m_monitorAction->isChecked())
+        m_monitorAction->setChecked(false);
+    stopMonitor();
+    m_tableView->setFollowSide(isEventLogChannelDocument()
+                                   ? LogTableView::FollowSide::Top
+                                   : LogTableView::FollowSide::Bottom);
 
     m_lastError.clear();
     if (m_warningLabel)
@@ -1398,6 +1787,8 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
         m_closeAction->setEnabled(false);
         m_exportAction->setEnabled(false);
         m_monitorAction->setEnabled(false);
+        m_loadMoreEventsAction->setEnabled(false);
+        m_loadMoreEventsButton->hide();
         m_columnsMenu->clear();
         m_columnActions.clear();
         m_showAllColumnsAction = nullptr;
@@ -1414,6 +1805,8 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
         documentText += QLatin1Char(' ') + tr("(truncated)");
     if (!m_snapshotPath.isEmpty())
         documentText += QLatin1Char(' ') + tr("(elevated snapshot)");
+    if (m_eventLogElevated)
+        documentText += QLatin1Char(' ') + tr("(elevated)");
     m_docLabel->setText(documentText);
 
     QStringList stats;
@@ -1436,9 +1829,18 @@ void MainWindow::updateDocumentUi(bool documentLoaded)
     m_closeAction->setEnabled(true);
     m_exportAction->setEnabled(true);
 
+    // "Load More Events…" is offered only for a truncated native event log
+    // (REQ-EVT-09).
+    const bool canLoadMore = info.truncated
+        && (!m_eventLogChannel.isEmpty() || !m_eventLogPath.isEmpty());
+    m_loadMoreEventsAction->setEnabled(canLoadMore);
+    m_loadMoreEventsButton->setVisible(canLoadMore);
+
     // Live monitoring needs a real file behind the document (no demo data) and
-    // is disabled for elevated snapshots (REQ-REL-04).
-    const bool canMonitor = static_cast<bool>(m_source) && m_snapshotPath.isEmpty();
+    // is disabled for elevated snapshots (REQ-REL-04). Native event log
+    // channels are polled through EventLogWatcher (REQ-EVT-11).
+    const bool canMonitor = (static_cast<bool>(m_source) && m_snapshotPath.isEmpty())
+        || isEventLogChannelDocument();
     m_monitorAction->setEnabled(canMonitor);
     if (!canMonitor && m_monitorAction->isChecked())
         m_monitorAction->setChecked(false);
@@ -1490,6 +1892,24 @@ void MainWindow::updateEmptyHint()
 
 void MainWindow::openPaths(const QStringList &paths, const QString &forcedFormatId)
 {
+    // Archived/copied event logs are binary; route them to the native API
+    // instead of the text parser (REQ-EVT-03). Multi-select cannot merge event
+    // logs: one document holds exactly one channel or file.
+    for (const QString &path : paths) {
+        if (!path.endsWith(QLatin1String(".evtx"), Qt::CaseInsensitive))
+            continue;
+        if (!m_eventLogBackend || !m_eventLogBackend->isSupported()) {
+            reportError(tr("Windows event logs are only available on Windows."));
+            return;
+        }
+        if (paths.size() != 1) {
+            reportError(tr("Open one Windows event log file at a time."));
+            return;
+        }
+        openEventLogFile(path);
+        return;
+    }
+
     const QString currentPath = paths.size() == 1 ? paths.first() : QString();
     openPathsInternal(paths, forcedFormatId, paths, currentPath, false);
 }
@@ -1683,6 +2103,8 @@ void MainWindow::updateElevationOffer(const QStringList &paths)
 void MainWindow::clearElevationOffer()
 {
     m_elevationCandidate.clear();
+    m_pendingEventLogElevationChannel.clear();
+    m_pendingEventLogElevationPath.clear();
     if (m_elevateButton)
         m_elevateButton->hide();
 }
@@ -1698,6 +2120,14 @@ void MainWindow::releaseSnapshot()
 
 void MainWindow::onElevateClicked()
 {
+    // Event log offer (REQ-EVT-10) takes precedence over the file snapshot.
+    if (!m_pendingEventLogElevationChannel.isEmpty()
+        || !m_pendingEventLogElevationPath.isEmpty()) {
+        loadElevatedEventLog(m_pendingEventLogElevationChannel,
+                             m_pendingEventLogElevationPath,
+                             EventLogProvider::kMaxRecords);
+        return;
+    }
     if (!m_elevationCandidate.isEmpty())
         openElevated(m_elevationCandidate);
 }

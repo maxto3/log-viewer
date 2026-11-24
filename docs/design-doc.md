@@ -202,6 +202,18 @@ public:
 | `format_iis.cpp` | `iis_w3c` | `#Fields:` 表头 + 空格分隔数据行 | time(date+time 合并), level(由 sc-status 推断，可选), extra, message |
 | `format_generic.cpp` | `generic` | 可选时间戳 + 可选 `[LEVEL]`/`LEVEL:` + 其余为消息；无时间戳时单列消息 | time?, level?, message |
 
+**Windows 事件日志（原生，`wevt_native`）**：实时通道与 `.evtx` 文件不经过文本解析器，而由 `core/EventLogProvider` 通过 `IEventLogBackend` 读取；Windows 实现位于 `platform/EventLogBackend.cpp`（非 Windows 返回 `isSupported()==false` 的桩）：
+
+- 实时通道：`EvtQuery(NULL, channel, NULL, EvtQueryChannelPath | EvtQueryReverseDirection)`；归档/复制文件：`EvtQueryFilePath`。`C:\Windows\System32\winevt\Logs\*.evtx` 被 EventLog 服务占用，实测直接按文件路径查询返回 `ERROR_ACCESS_DENIED`（复制同样被拒），因此实时日志必须走通道 API。
+- 每批 `EvtNext` ≤128 条 → `EvtRender(EvtRenderEventXml)` 取 XML → `EvtFormatMessage` 取本地化消息；publisher 元数据按 provider 缓存并**跨打开复用**（否则每次打开都重新加载资源 DLL，实测重复打开会由约 2 s 退化到 9 s）。消息格式化失败（部分转发事件/第三方 provider 无元数据）时保留 EventData 回退。
+- 查询按新→旧返回；表格直接按该顺序显示（**第一行是最新事件**，REQ-EVT-06），继续加载的旧记录追加在下方；多取 1 条判断是否 truncated。默认上限 `EventLogProvider::kMaxRecords = 20000`。
+- 时间：`EvtRender` 的 `<TimeCreated SystemTime='…Z'>` 为 UTC，provider 用 `toLocalTime()` 转为本地时间显示（Event Viewer 语义）；`QDateTime` 的绝对时刻不变，因此时间范围过滤仍按真实时刻比较。
+- 截断文档支持分档继续加载（REQ-EVT-09）：`EventLogProvider::requestedLimit()` 记录本次上限，File ▸ Load More Events… 与状态栏按钮在原目标上以 `+20000` 或 `0`（全部）重新查询并替换文档；加载全部前提示耗时/内存，失败保留旧文档，视图重建并重置滚动位置与选中行。
+- XML 字段映射复用 `WindowsEventXmlFormat::parseEventXml()`；其 `Message` 为空，由 `EvtFormatMessage` 文本覆盖，EventData 拼接作为回退。
+- Security 通道普通用户返回 `ERROR_ACCESS_DENIED`，错误文案提示以管理员身份运行；`.evtx` 文件被占用时提示改用通道或停止服务后复制。
+- **UAC 提权（REQ-EVT-10）**：`ShellExecuteExW(runas)` 启动同一 exe 的 `--event-log-stream` 辅助模式；主进程创建随机命名的私有管道（`FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED`、ACL 当前用户 + Administrators + SYSTEM、`PIPE_REJECT_REMOTE_CLIENTS`），助手用 `wevtapi` 只读目标并按帧（magic/version/type/length + `QDataStream` 载荷）写回；Job Object 防止助手残留；主进程始终非提权。
+- **实时监控（REQ-EVT-11）**：`EventLogWatcher` 每 2 秒先探测最新 `EventRecordID`（回退即视为通道清空/重建），再用 `*[System[EventRecordID > N]]` + 反向查询取新增记录，`EventLogProvider::prependBatch()` 插到顶部；新增累计 50,000 条后自动暂停。行高/展开缓存以稳定的 `EventRecordID`（写入 `LogEntry::firstLine`）为锚点；事件日志表头显示 `Record ID`。
+
 **探测算法**
 
 1. 取文件前 200 个物理行做探针样本（读 64 KB 足矣）。
@@ -212,7 +224,7 @@ public:
 
 **列生成规则**：**`Line` 恒为第一列**（左起对齐，便于与原始文件对照）；多文件时 `File` 次之；`Time, Level` 紧随其后（格式无时间/级别则隐藏该列）；`Thread, Target, Pid, Host` 按"至少 50% 条目非空"判定是否显示；`Message` 常显且为最后一列（吃掉剩余宽度）；`extra` 列追加在 Message 之前。
 
-**`Line` 取值**（REQ-PARSE-03）：默认为条目的首个物理行号；格式可声明 `ILogFormat::numbersEntriesSequentially()` 改用**源内条目序号 1..N**——记录式导出需要它：`wevt_xml` 整个文档常写在一个物理行上（所有事件同在第 2 行）、`wevt_tsv` 首行是表头（数据从第 2 行开始），物理行既无法区分行、也不能从 1 开始；编号由 `LogSource` 统一赋值（行式条目在 `parseEntryAt()`，文档式条目的在 `buildEntryIndex()` 重编号）。
+**`Line` 取值**（REQ-PARSE-03）：默认为条目的首个物理行号；格式可声明 `ILogFormat::numbersEntriesSequentially()` 改用**源内条目序号 1..N**——记录式导出需要它：`wevt_xml` 整个文档常写在一个物理行上（所有事件同在第 2 行）、`wevt_tsv` 首行是表头（数据从第 2 行开始），物理行既无法区分行、也不能从 1 开始；编号由 `LogSource` 统一赋值（行式条目在 `parseEntryAt()`，文档式条目的在 `buildEntryIndex()` 重编号）。**原生 Windows 事件日志**（`wevt_native`）不使用 `ILogFormat`，`EventLogProvider` 直接把稳定的 `EventRecordID` 写入 `firstLine`，表头显示 `Record ID`（REQ-EVT-06），从而在实时监控顶部前插时保持行身份与行高缓存稳定。
 
 **列宽自适应**（`LogTableView::autoFitColumns()`，REQ-TABLE-05，右键菜单 Auto-fit Columns）：宽度 = **内容宽度 + 2 px 取整余量**（`contentWidthHint()` → 逐单元格调用 `LogItemDelegate::sizeHint()`；表头标题更宽时以 `headerTitleWidth()` 为准，避免标题被截断），下限 36 px、上限 600 px——**不为凑最小宽度留白**。内容宽度采样**整篇文档**：前 `kAutoFitHeadRows`(500) 行连续 + 其后 `kAutoFitSpreadRows`(3500) 行均匀抽样；`sizeHintForColumn()` 被覆盖为该实现（Qt 自带只看向前部窗口，曾漏掉更宽的级别值）。分配优先级：① **时间列与级别列先预留**（时间戳不换行、级别 chip 不被裁切，两列都不参与缩放）→ ② 消息列（= `stretchColumn()`，消息列隐藏时为最后一个可见列）保留剩余宽度且不少于 `max(240, 视口宽度 × 2/5)` → ③ 其余可见列在 `预算 = 视口宽度 − 预留列 − 消息列份额` 内按内容长度等比分配：预算充裕时各取内容宽度，不足时按 `预算 × 内容ᵢ / Σ内容` 缩放（下限 24 px，末列吃余数）。回归提醒：紧空间分支必须跳过预留列（曾把时间戳二次缩小）；级别列也必须预留并全文档测量（曾因采样漏掉 DEBUG 而按 INFO 拟合）。
 
@@ -383,6 +395,8 @@ public:
 | 文件关联 | 可执行文件自身写 `HKCU\Software\Classes`（`--register-association` / `--unregister-association`，路径取自 `applicationFilePath()`） | `.desktop` + MIME XML + `xdg-mime`（随 install/.deb） | `FileAssociation` + `packaging/` |
 | 打包 | `windeployqt` → `dist\` 便携目录 | CPack DEB + `install` 规则 | `scripts/`、`packaging/` |
 | 行尾 | 导出默认 CRLF | 导出默认 LF | 导出模块按 `QOperatingSystemVersion` 或提供开关（可强制 LF） |
+| Windows 事件日志 | `wevtapi`：通道查询 / `.evtx` 文件路径查询 | **不支持**：入口隐藏，`createEventLogBackend()` 返回桩 | `EventLogBackend` + `EventLogProvider` |
+| 事件日志提权 | `ShellExecuteExW(runas)` 启动本程序 `--event-log-stream` + 命名管道 | 不支持（无提权入口） | `ElevatedEventLog` |
 | 路径分隔符 | `\` | `/` | 一律 `QDir`/`QFileInfo`，禁止字面量（CON-9） |
 | 文件名大小写 | 不敏感 | 敏感 | 格式探测与扩展名映射一律大小写不敏感 |
 | DPI / 显示后端 | 系统缩放 | X11 / Wayland 自适应 | Qt 6 自动处理（不写平台代码） |
@@ -509,9 +523,15 @@ TokenKind：`Plain, Timestamp, Level{PerLevel}, Keyword, Key, String, Number, Ke
 ```
 File
  ├─ Open…                        Ctrl+O
+ ├─ Windows Event Log ▸          （仅 Windows，REQ-EVT）
+ │   ├─ Application / System / Setup / Security
+ │   ├─ ────────────
+ │   ├─ All Channels…
+ │   └─ Open .evtx File…
+ ├─ Load More Events…            （仅截断的事件日志，REQ-EVT-09）
  ├─ Refresh                      F5
  ├─ Close                        Ctrl+W
- ├─ Monitor                      ☑（仅单文件可勾选）
+ ├─ Monitor                      ☑（文件或事件日志通道）
  ├─ ────────────
  ├─ Export Filtered Results…     Ctrl+E（CSV / Plain text）
  ├─ ────────────
@@ -734,6 +754,7 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | `tst_watcher.cpp` | 追加、截断、rename 轮转、部分行（无换行）写入 | 新行完整出现且不重复；轮转后继续跟随（临时文件模拟，平台无关） |
 | `tst_encoding.cpp` | UTF-8/UTF-8 BOM/UTF-16LE + **平台回退样本**（CP936 中文） | 转换文本与预期一致；非法字节产生 U+FFFD 并计数；Linux 上未启用时跳过并记为 `SKIP`（v1 不验证） |
 | `tst_cli.cpp` | `--help/--version/--lang/--monitor/--format`、非法参数、退出码、位置参数解析 | 退出码 0/1/2 与输出内容符合 §7.2；`CliParser` 无 UI 依赖 |
+| `tst_eventlog.cpp` | 事件日志 provider（mock backend）：XML 字段映射、消息优先/回退、截断、错误透传、通道/文件元数据、继续加载上限、EventRecordID/顶部前插、watcher 清空检测、非提权管道助手；Windows 集成查询 Application 通道与 `readChannelSince` | 字段与顺序正确；truncated 仅在上限之外仍有记录时为真；`requestedLimit()` 记录 20k/40k/0；前插不重复；清空触发 `documentRebuilt`；管道帧可解码 |
 | `bench_1m_lines` | 100 万行合成日志 | 索引 ≤ 2.5 s、过滤 ≤ 300 ms、内存 ≤ 250 MB（报告输出） |
 
 手工冒烟清单（`tests/SMOKE.md`，M6 生成）：语言即时切换、三项字体、右/底布局切换、主题切换、监控跟随与暂停、双击复制、Enter 展开、导出过滤结果、拖拽多文件（含异构拒绝）、CLI 启动、文件关联注册/撤销。
@@ -782,6 +803,13 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 监控轮转/截断导致重复或丢行 | 数据错误 | 记录已读字节与文件标识；检测到大小回退或替换则重开并去重；`tst_watcher` 覆盖（临时文件模拟，双平台可跑） |
 | 无时间戳格式的时间过滤语义分歧 | 用户困惑 | 默认"不匹配"（可配置），详情面板与状态栏提示 |
 | 文件关联被用户或第三方重置 | 关联失效 | 脚本可反复执行；`-Unregister` 完整撤销；文档说明系统更新可能重置关联 |
+| 事件日志消息格式化失败（publisher 元数据缺失、转发事件） | 消息为空或只有占位文本 | 逐条回退 EventData 拼接；单条失败不影响整篇（实测 System 通道失败率约 7–10%） |
+| 实时 `.evtx` 被服务占用、Security 需管理员 | 打开失败 | 实时日志走通道 API；文件路径仅用于归档/复制文件；错误文案明确提示管理员或改用通道 |
+| 20k 事件同步格式化耗时 2–4 s | 打开卡顿 | 等待光标 + 20k 上限；provider 元数据跨打开缓存；二期可改后台加载/增量 |
+| UAC 管道 ACL/命名被本地进程抢注 | 权限提升 / 数据泄露 | 随机名 + `FILE_FLAG_FIRST_PIPE_INSTANCE` + 当前用户/BA/SY ACL + `PIPE_REJECT_REMOTE_CLIENTS`；助手只读、参数固定、不写用户路径 |
+| 提权助手残留 | 安全 / 资源泄漏 | Job Object `KILL_ON_JOB_CLOSE`；读取完成/断管/退出时关管道并等待；连接/读取超时 |
+| 监控前插与过滤/行高/展开缓存不一致 | 行错位或高度串行 | 事件日志以 `EventRecordID` 作为 `firstLine` 稳定键；`prependRows()` 偏移可见行并清缓存；单测覆盖过滤与前插 |
+| 2 s 轮询阻塞 UI | 卡顿 | 每次只取增量、单批 ≤500；必要时移到工作线程；待实测 10 分钟 CPU |
 
 ## 14. 开发约定
 
@@ -997,6 +1025,56 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 - 视觉核对：`LOGVIEWER_DUMP_LAYOUT` 新增 `statusBar` / `elevateButton` 输出，浅色与深色离屏截图确认按钮为填充告警色 + 对比文字且状态栏高度不变。
 - **未验证（诚实记录）**：真实 polkit 授权对话框与 pkexec 提权路径未在自动化中触发（会弹出系统认证窗口，需用户人工点击确认）；认证与复制期间 UI 同步阻塞；无 `XDG_RUNTIME_DIR` 时回退系统临时目录，异常崩溃可能遗留快照（0600，仅本人可读）。
 
+### 16.12 Windows 事件日志原生查看（2026-11-23）
+
+目标（spec 1.42 的 FMT-7 / REQ-EVT-01…08）：Windows 上直接查看实时事件日志与 `.evtx` 文件，不要求先导出为文本/XML；非 Windows 完全隐藏入口。
+
+实现位置：
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/core/IEventLogBackend.h` | `EventLogRecord` / `EventLogChannel` / `EventLogReadResult`、纯接口、`createEventLogBackend()` |
+| `src/platform/EventLogBackend.cpp` | `wevtapi` 实现：`EvtQuery`（ChannelPath/FilePath + ReverseDirection）、`EvtNext` ≤128、`EvtRender`、`EvtFormatMessage`（provider 元数据缓存跨打开复用）、truncated 探测、错误码映射；非 Windows 桩 |
+| `src/core/EventLogProvider.{h,cpp}` | `IEntryProvider` 实现：通道/文件两个入口、新→旧顺序、20,000 上限、UTC → 本地时间、XML → `LogEntry`（复用 `WindowsEventXmlFormat::parseEventXml`，格式化消息优先）、`DocumentInfo.formatId="wevt_native"` |
+| `src/ui/EventLogChannelDialog.{h,cpp}` | 可过滤的全部通道列表（本机枚举 1270 个） |
+| `src/ui/MainWindow.{h,cpp}` | File ▸ Windows Event Log 子菜单（常用 4 通道 + All Channels… + Open .evtx File…）、空状态按钮、`.evtx` 拖放/CLI/打开对话框路由；`setProvider(provider, QString())` 自动禁用 Refresh/Monitor、不写最近文件；截断时「Load More Events…」（+20,000 或确认后全部，REQ-EVT-09） |
+| `src/CMakeLists.txt` | `WIN32` 链接 `wevtapi` |
+| `tst_eventlog.cpp` + UI 用例 | mock backend 覆盖映射/顺序/上限/错误；Windows 集成查询 Application；菜单存在性与真实通道打开 |
+
+实测（Windows 11、普通用户、MSVC 19.52、Qt 6.8.3）：
+
+- `EvtQuery` 查 System/Application 成功；5,000 条渲染 + 消息格式化约 0.5–0.8 s；消息格式化成功率约 90–93%（System 失败 503/5000，`ERROR_EVT_MESSAGE_NOT_FOUND` 等），回退 EventData 生效。
+- `Security` 通道返回 `ERROR_ACCESS_DENIED`；直接按文件路径查询 `C:\Windows\System32\winevt\Logs\*.evtx` 同样拒绝访问（复制也被拒），归档/`wevtutil epl` 导出的 `.evtx` 可正常打开。
+- 优化记录：最初每次打开都重新打开 publisher 元数据并在每条事件上做“先查长度再分配”，20,000 条约 4–10 s；改为元数据跨打开缓存 + 4 KiB 复用缓冲区后，首次约 2–3 s、重开约 3 s。XML 映射 20,000 条约 0.5 s。
+- `scripts\build.ps1` 通过；`ctest` **18/18**（含 `tst_eventlog` 10 个用例与 UI 用例 `eventLogMenuOnlyOnSupportedPlatforms` / `opensNativeEventLogChannel`）。
+- 分档继续加载（REQ-EVT-09）：`requestedLimit()` 记录上限；File/状态栏「Load More Events…」每次 +20,000，或确认后 `maxRecords=0` 加载全部；失败保留原文档；UI 用例断言按钮仅随 `truncated` 出现。
+- **未验证（诚实记录）**：本会话只做 Windows 验证，Linux 构建未执行（非 Windows 桩按 `FileAssociation` 模式实现，但未实际编译）；归档 `.evtx` 的文件路径打开仅用 `wevtutil epl` 产物验证，未覆盖跨机器/跨版本归档；UAC 提权读取未实现（Security 只给提示）。
+
+> 后续未实施项（Windows UAC 提权读取、事件日志实时监控）的计划见 `docs/plan-eventlog-phase2.md`。
+
+### 16.13 Windows 事件日志二期：UAC 与实时监控（2026-11-24）
+
+目标（spec 1.45 的 REQ-EVT-10/11、REQ-CLI-12、REQ-PLAT-08 例外）：Security 可通过 UAC 提权查看；实时通道支持 2 秒增量监控；Security 监控本轮不做。
+
+| 模块 | 内容 |
+| --- | --- |
+| `src/platform/ElevatedEventLog.{h,cpp}` | `ShellExecuteExW(runas)` 启动 `--event-log-stream` 助手；随机命名管道（FIRST_PIPE_INSTANCE、当前用户/BA/SY ACL、REJECT_REMOTE_CLIENTS）、帧协议（magic/version/type/length + `QDataStream`）、连接/读取超时、Job Object `KILL_ON_JOB_CLOSE`；非 Windows 桩；`setUseRunasForTesting` / `setProgramOverrideForTesting` 测试 seam |
+| `src/main.cpp` | GUI 初始化前识别 `--event-log-stream`（与 Linux `--elevated-stream` 同层） |
+| `src/ui/MainWindow.{h,cpp}` | 访问被拒（`EventLogError::AccessDenied`）→ 状态栏 **Open as Administrator…**；提权文档 `(elevated)`；提权禁用 Monitor；“加载更多”重新授权；`(elevated)` 不写最近文件 |
+| `src/core/EventLogWatcher.{h,cpp}` | 2 秒 QTimer；先探测最新 `EventRecordID`（回退 = 清空/重建），再 `readChannelSince()`；新增 50,000 条后停止并提示 |
+| `src/core/EventLogProvider.{h,cpp}` | `EventRecordID` 写入 `firstLine`（稳定锚点）；`prependBatch()` 顶部前插、按 ID 去重；`newestRecordId()` / `oldestRecordId()` / `fromResult()` |
+| `src/platform/EventLogBackend.cpp` | `EventLogRecord::recordId`、`EventLogError`、`readChannelSince()`（`*[System[EventRecordID > N]]` + 反向）；错误分类供 UAC 判断 |
+| `src/core/LogTableModel.{h,cpp}` | 事件日志表头 `Record ID`；`prependRows()`（过滤时偏移可见行、只插入匹配的新行）；清查找/片段缓存 |
+| `src/ui/LogTableView.{h,cpp}` | `FollowSide::Top`、`isAtTop()` / `scrollToTopNow()`、顶部 `New events: N ▲` 按钮 |
+| `tst_eventlog.cpp` | 新增 RecordID 映射、顶部前插/去重、watcher 增量与清空检测、非提权管道助手（Application 5 条）、真实 `readChannelSince` XPath 断言 |
+
+验证（Windows 11、MSVC 19.52、Qt 6.8.3）：
+
+- `scripts\build.ps1` 通过；`ctest` **18/18**（`tst_eventlog` 17 项通过，含非提权管道助手与真实 XPath 查询）。
+- 非提权管道助手：主进程创建管道 → `CreateProcessW` 启动 `log-viewer.exe --event-log-stream ...` → 读取 Application 5 条记录，帧解码、RecordID 与 XML 均有效（见 `readsThroughHelperWithoutUac`）。
+- 实时监控：临时集成验证通过——用 `ReportEventW` 向 Application 写入一条事件，`EventLogWatcher`（500 ms）在超时内 `prepend`，顶部记录 ID 等于 `newestRecordId()`；该用例未入库以免每次测试污染应用日志。
+- **未验证（诚实记录）**：真实 UAC 授权对话框与提权后的 Security 读取未在自动化中触发（需人工点击 UAC）；Security 监控按决策本轮不做；Linux 构建未执行。
+
 ## 15. 修订记录
 
 | 版本 | 日期 | 修改人 | 说明 |
@@ -1044,3 +1122,8 @@ CPack DEB 关键配置（`packaging/linux/deb/CPackDeb.cmake`）：
 | 1.40 | 2026-10-01 | AI 助手（依据用户指示） | 新增 §16.10 第二期 Linux 提权读取（spec 1.39：REQ-REL-04 / REQ-CLI-11 / REQ-PLAT-08 例外）：`src/platform/ElevatedFileReader`（pkexec 只读快照、目录 0700 / 文件 0600、失败清理、测试程序覆盖）、`main.cpp` GUI 前辅助模式、MainWindow 告警按钮 / Refresh 重新授权 / 快照生命周期；新增 `tst_elevated`（6 用例）与 UI 全链路用例，`ctest` 16/16（offscreen + Wayland）；真实 polkit 授权对话框待人工验证 |
 | 1.41 | 2026-10-01 | AI 助手（依据用户反馈） | UI 调整（spec 1.40）：「以管理员权限打开…」改为醒目的填充高亮按钮（`QPushButton#elevateButton`，主题化告警色 + 对比文字 + hover/pressed；浅色 5.62:1 / 深色 5.94:1），状态栏高度不变；`writeLayout()` 增加 `statusBar` / `elevateButton` 诊断；UI 用例补充非扁平与样式规则断言 |
 | 1.42 | 2026-10-01 | AI 助手（依据用户反馈） | 新增 §16.11 行尾 CR 与 ANSI 控制序列处理（spec 1.41：REQ-PARSE-11 修订 + REQ-PARSE-12）：`LineIndex` 支持 CR/LF/CRLF 混合与跨块/跨刷新 CRLF；新增 `core/AnsiText`（序列与控制字符清理 + SGR span）；`highlight/AnsiPalette` 浅/深 16 色（最差对比度 5.13:1 / 5.22:1）；表格与详情渲染 ANSI 前景/背景/加粗/斜体/下划线（含 256 色与真彩）；新增 `tst_ansitext`（14 用例）与 5 个 CR 行尾用例；真实 `boot.log` 由 234 行恢复为 455 行，方块与 `[0;32m` 残文消除 |
+| 1.43 | 2026-11-23 | AI 助手（依据用户需求） | 新增 §16.12 Windows 事件日志原生查看（spec 1.42：FMT-7 / REQ-EVT-01…08 / AC-21）：`IEventLogBackend` + `platform/EventLogBackend`（`wevtapi` 通道与 `.evtx` 文件路径查询、`EvtRender`/`EvtFormatMessage`、provider 元数据跨打开缓存、错误码映射）、`core/EventLogProvider`（旧→新、20,000 上限、复用 `parseEventXml`、消息回退）、File ▸ Windows Event Log 子菜单 / `EventLogChannelDialog` / 空状态按钮 / `.evtx` 拖放与 CLI 路由；§4.1、§4.9、§6.3、§10、§13 与双 README 同步；新增 `tst_eventlog` 与 2 条 UI 用例，`ctest` 18/18（仅 Windows 验证，Linux 未执行） |
+| 1.44 | 2026-11-23 | AI 助手（依据用户反馈） | 新增 REQ-EVT-09 分档继续加载（spec 1.43）：`EventLogProvider::requestedLimit()` 记录当前上限；`MainWindow` 保存通道/文件目标，File ▸ Load More Events… 与状态栏按钮仅在 `truncated` 时出现，选择「再加载 20,000 条」或确认后「加载全部」；`loadEventLog()` 统一重查并替换文档，失败保留旧文档；新增 `tst_eventlog::tracksTheRequestedLimit` 与 UI 断言；§4.1、§6.3、§10、§16.12、双 README 同步 |
+| 1.45 | 2026-11-23 | AI 助手（依据用户反馈） | 事件日志排序与时间显示（spec 1.44）：后端不再反转结果，表格按新→旧显示、第一行为最新事件（继续加载的旧记录追加在下方）；`EventLogProvider` 把 `SystemTime`（UTC）转换为本地时间，绝对时刻保留用于过滤；新增映射与集成断言；§4.1、§16.12、双 README 同步 |
+| 1.46 | 2026-11-24 | AI 助手（依据用户需求） | 新增二期计划文件 `docs/plan-eventlog-phase2.md`：Windows UAC 提权读取（辅助进程 + 命名管道）与事件日志实时监控（`EventRecordID` 增量轮询 + 顶部前插）的方案对比、需求修订清单、实施顺序、验收与风险；§16.12 增加指向。仅计划，未改代码 |
+| 1.47 | 2026-11-24 | AI 助手（依据二期计划确认） | 新增 §16.13：UAC 提权读取（`ElevatedEventLog` 助手 + 命名管道 + Job Object；MainWindow 访问被拒提示、`(elevated)`、加载更多重新授权）与实时监控（`EventLogWatcher` 2s 增量、`EventRecordID` 第一列、顶部前插/跟随、50k 上限、清空重建）；spec 1.45 同步；测试增至 18/18、`tst_eventlog` 16 项；真实 UAC 与真实新事件注入待人工验证 |

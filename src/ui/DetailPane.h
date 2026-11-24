@@ -25,7 +25,7 @@ class DetailPane : public QGroupBox
 public:
     explicit DetailPane(QWidget *parent = nullptr);
 
-    void setEntry(const LogEntry *entry, const QString &fileName);
+    void setEntry(const LogEntry *entry, const QString &fileName, bool eventLogRecord = false);
     void clearEntry();
     void setMessageFont(const QFont &font);
     void setDarkTheme(bool dark);
@@ -56,6 +56,8 @@ private:
     LogEntry m_entry;
     QString m_fileName;
     bool m_hasEntry = false;
+    /// True for native event logs: firstLine is an EventRecordID, not a line.
+    bool m_eventLogRecord = false;
     bool m_dark = false;
     MessageTextHighlighter *m_highlighter = nullptr;
 };

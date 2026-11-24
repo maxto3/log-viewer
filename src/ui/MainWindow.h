@@ -2,6 +2,7 @@
 
 #include "app/SettingsStore.h"
 #include "core/IEntryProvider.h"
+#include "core/IEventLogBackend.h"
 
 #include <QMainWindow>
 #include <QVector>
@@ -21,6 +22,7 @@ class QStackedWidget;
 namespace lv {
 
 class DetailPane;
+class EventLogWatcher;
 class FilterPanel;
 class HighlightTheme;
 class LogSource;
@@ -71,6 +73,16 @@ public:
     QString elevatedSnapshotPath() const { return m_snapshotPath; }
     /// Settings ▸ File Association action (checkable, REQ-UI-16).
     QAction *associateAction() const { return m_associateAction; }
+    /// File ▸ Windows Event Log submenu (REQ-EVT-01); null on platforms
+    /// without native event log support.
+    QMenu *eventLogMenu() const { return m_eventLogMenu; }
+    /// File ▸ Load More Events action (REQ-EVT-09); enabled only for a
+    /// truncated native event log document.
+    QAction *loadMoreEventsAction() const { return m_loadMoreEventsAction; }
+    /// Status bar entry mirroring loadMoreEventsAction().
+    QPushButton *loadMoreEventsButton() const { return m_loadMoreEventsButton; }
+    /// True while the native event log channel watcher is polling (REQ-EVT-11).
+    bool isEventLogMonitoring() const;
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -82,6 +94,20 @@ protected:
 
 private slots:
     void onOpen();
+    /// File ▸ Windows Event Log entries (REQ-EVT). The channel/file providers
+    /// are attached with an empty path, which disables Refresh and Monitor.
+    void openEventLogChannel(const QString &channel);
+    void openEventLogFile(const QString &path);
+    void onOpenEventLogChannels();
+    void onOpenEventLogFile();
+    /// "Load More Events…" for a truncated event log (REQ-EVT-09): 20,000 more
+    /// events or all remaining events after a confirmation.
+    void onLoadMoreEvents();
+    /// Live event log monitor (REQ-EVT-11): new records are prepended.
+    void onEventLogRowsPrepended(int count);
+    void onEventLogDocumentRebuilt();
+    void onEventLogLimitReached();
+    void onEventLogWatchingFailed(const QString &message);
     void onRefresh();
     void onCloseDocument();
     void onAbout();
@@ -120,6 +146,9 @@ private:
 
     void createActions();
     void createMenus();
+    /// Builds the File ▸ Windows Event Log submenu on platforms with native
+    /// event log support (REQ-EVT-01/02); a no-op elsewhere.
+    void buildEventLogMenu();
     void createCentralWidget();
     void createStatusBar();
     void connectSignals();
@@ -151,6 +180,17 @@ private:
     bool findPatternIsPending() const;
 
     void setProvider(const EntryProviderPtr &provider, const QString &path);
+    /// Shared native event log loader behind openEventLogChannel/File and the
+    /// "load more" flow. Exactly one of \a channel and \a path is non-empty;
+    /// \a maxRecords <= 0 loads every record (REQ-EVT-09).
+    bool loadEventLog(const QString &channel, const QString &path, int maxRecords,
+                      bool resumeMonitoring = false);
+    /// Reads an event log through the UAC helper (REQ-EVT-10) and attaches it.
+    void loadElevatedEventLog(const QString &channel, const QString &path, int maxRecords);
+    /// Starts the polling watcher for the current native channel document.
+    void startEventLogMonitor();
+    /// True when the current document is a live event log channel (not .evtx).
+    bool isEventLogChannelDocument() const;
     /// Shared open implementation behind openPaths() and openElevated(): the
     /// latter passes \a keepSnapshot = true because the private snapshot was
     /// registered just before. Returns whether a document was attached.
@@ -205,13 +245,27 @@ private:
 
     EntryProviderPtr m_provider;
     std::shared_ptr<LogSource> m_source;     ///< file backed provider, if any
+    /// Native Windows event log backend; unsupported stub elsewhere.
+    EventLogBackendPtr m_eventLogBackend;
     std::unique_ptr<LogWatcher> m_watcher;
+    /// Polling watcher for native event log channels (REQ-EVT-11).
+    std::unique_ptr<EventLogWatcher> m_eventLogWatcher;
     QString m_currentPath;
+    /// Current native event log target and limit (REQ-EVT-09); empty/zero when
+    /// the document is not an event log.
+    QString m_eventLogChannel;
+    QString m_eventLogPath;
+    int m_eventLogMaxRecords = 0;
     QString m_documentSignature;             ///< column layout key (REQ-TABLE-05)
     QString m_forcedFormatId;
     QString m_lastError;
     /// Candidate file for the elevated open offered by the status bar button.
     QString m_elevationCandidate;
+    /// Pending UAC targets for a denied event log (REQ-EVT-10).
+    QString m_pendingEventLogElevationChannel;
+    QString m_pendingEventLogElevationPath;
+    /// True while the current event log document came from the elevated helper.
+    bool m_eventLogElevated = false;
     /// Private read-only snapshot backing the current elevated document.
     QString m_snapshotPath;
     /// Original (unreadable) path of the elevated document; Refresh re-reads it
@@ -228,6 +282,8 @@ private:
     QLabel *m_emptyTitle = nullptr;
     QLabel *m_emptyHint = nullptr;
     QPushButton *m_emptyOpenButton = nullptr;
+    /// Empty state entry for the native Windows event log (Windows only).
+    QPushButton *m_emptyEventLogButton = nullptr;
     LogTableView *m_tableView = nullptr;
     LogTableModel *m_model = nullptr;
     DetailPane *m_detailPane = nullptr;
@@ -240,6 +296,8 @@ private:
     StatusWarningLabel *m_warningLabel = nullptr;
     /// "Open as Administrator…" next to the warning (REQ-REL-04).
     QPushButton *m_elevateButton = nullptr;
+    /// "Load More Events…" for a truncated event log (REQ-EVT-09).
+    QPushButton *m_loadMoreEventsButton = nullptr;
     /// Bottom-left status bar label: duration of the last document open
     /// (REQ-UI-15). Normal indicator, so a temporary message hides it briefly.
     QLabel *m_loadTimeLabel = nullptr;
@@ -254,6 +312,10 @@ private:
     QVector<QAction *> m_columnActions;
     QAction *m_showAllColumnsAction = nullptr;
     QMenu *m_recentMenu = nullptr;
+    /// File ▸ Windows Event Log (Windows only, REQ-EVT-01).
+    QMenu *m_eventLogMenu = nullptr;
+    QAction *m_eventLogAllChannelsAction = nullptr;
+    QAction *m_eventLogFileAction = nullptr;
     QMenu *m_fontMenu = nullptr;
     QMenu *m_languageMenu = nullptr;
     QMenu *m_layoutMenu = nullptr;
@@ -269,6 +331,8 @@ private:
     QAction *m_closeAction = nullptr;
     QAction *m_monitorAction = nullptr;
     QAction *m_exportAction = nullptr;
+    /// File ▸ Load More Events… (Windows event logs, REQ-EVT-09).
+    QAction *m_loadMoreEventsAction = nullptr;
     QAction *m_exitAction = nullptr;
     QAction *m_clearRecentAction = nullptr;
 
